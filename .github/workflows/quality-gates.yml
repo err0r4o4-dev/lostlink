@@ -29,8 +29,8 @@ jobs:
           python-version: "3.13"
 
       - name: Check patch whitespace
-        run: git diff --check HEAD^
-        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: git show --check --format= --no-renames HEAD
+        if: github.event_name == 'push'
 
       - name: Audit repository and calculate scores
         run: python .github/scripts/repository_audit.py
