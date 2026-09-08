@@ -1,3 +1,13 @@
+FROM golang:1.25-alpine AS development
+
+WORKDIR /app
+RUN go install github.com/air-verse/air@v1.66.1
+COPY apps/api/go.mod apps/api/go.sum ./
+RUN go mod download
+COPY apps/api/ ./
+EXPOSE 8080
+CMD ["air", "--build.cmd", "go build -o /tmp/lostlink-api ./cmd/api", "--build.entrypoint", "/tmp/lostlink-api", "--build.poll", "true", "--build.poll_interval", "500"]
+
 FROM golang:1.25-alpine AS build
 
 WORKDIR /src

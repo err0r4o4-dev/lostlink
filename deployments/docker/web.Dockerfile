@@ -1,8 +1,17 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
+
+FROM dependencies AS development
+
+COPY apps/web/ ./
+EXPOSE 8080
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
+
+FROM dependencies AS build
+
 COPY apps/web/ ./
 RUN npm run build
 
