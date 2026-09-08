@@ -26,8 +26,8 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BASE_REF" == "develop" && ! "$HEAD_REF" =~ ^(task/|dependabot/) ]]; then
-            echo "Pull requests into develop must come from task/* or dependabot/*." >&2
+          if [[ "$BASE_REF" == "develop" && ! "$HEAD_REF" =~ ^(feature/|dependabot/) ]]; then
+            echo "Pull requests into develop must come from feature/* or dependabot/*." >&2
             exit 1
           fi
 

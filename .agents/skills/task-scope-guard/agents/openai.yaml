@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Scope Guard"
+  short_description: "Enforce task ownership and write scope"
+  default_prompt: "Use $task-scope-guard to validate this task scope."

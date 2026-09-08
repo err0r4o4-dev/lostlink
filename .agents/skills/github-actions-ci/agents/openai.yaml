@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Actions CI"
+  short_description: "Maintain reproducible CI quality gates"
+  default_prompt: "Use $github-actions-ci to update LostLink CI."

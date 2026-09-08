@@ -1,0 +1,4 @@
+interface:
+  display_name: "React TypeScript Frontend"
+  short_description: "Build LostLink React frontend behavior"
+  default_prompt: "Use $react-typescript-frontend to implement this web task."

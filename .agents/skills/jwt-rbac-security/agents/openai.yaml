@@ -1,0 +1,4 @@
+interface:
+  display_name: "JWT RBAC Security"
+  short_description: "Secure JWT sessions and role checks"
+  default_prompt: "Use $jwt-rbac-security to design or review authentication."

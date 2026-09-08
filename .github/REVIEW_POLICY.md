@@ -11,5 +11,5 @@ Pull requests into `develop` or `main` are expected to have:
 - all review conversations resolved;
 - no unresolved high-risk security finding.
 
-Release pull requests target `main` from `develop`. Task pull requests target
-`develop` from a `task/*` branch.
+Release pull requests target `main` from `develop`. Feature pull requests target
+`develop` from an approved `feature/*` branch.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Multimodal Matching"
+  short_description: "Develop and evaluate item similarity"
+  default_prompt: "Use $multimodal-matching to change LostLink matching."

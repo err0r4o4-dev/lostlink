@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docker Compose"
+  short_description: "Operate the local service stack"
+  default_prompt: "Use $docker-compose to change the LostLink stack."

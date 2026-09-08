@@ -1,0 +1,31 @@
+name: Scoped engineering task
+description: Create a LostLink task with an explicit owner and write boundary.
+title: "[TASK] "
+labels: ["task"]
+body:
+  - type: textarea
+    id: identity
+    attributes:
+      label: Task identity
+      description: Provide TASK, OWNER, FEATURE, and SUB-SCOPE.
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Allowed write, read-only, and forbidden paths
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Dependencies, required skills, tests, and security review
+    validations:
+      required: true
+

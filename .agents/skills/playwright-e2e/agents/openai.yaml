@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playwright E2E"
+  short_description: "Test critical journeys in a browser"
+  default_prompt: "Use $playwright-e2e to add this end-to-end test."

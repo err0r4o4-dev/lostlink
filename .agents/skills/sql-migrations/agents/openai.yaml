@@ -1,0 +1,4 @@
+interface:
+  display_name: "SQL Migrations"
+  short_description: "Create safe reversible SQL migrations"
+  default_prompt: "Use $sql-migrations to implement this schema change."
