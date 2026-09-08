@@ -1,35 +1,55 @@
 # LostLink
 
-**A clear path home for lost items.**
-
-**University Lost & Found with AI-assisted discovery**
-
-**แพลตฟอร์มค้นหาและส่งคืนของหายในมหาวิทยาลัยด้วยระบบ AI ช่วยค้นหา**
-
 > LostLink uses similarity only to suggest potentially related reports. A match score is not proof of ownership, and ownership decisions require a separate authorized verification process.
 
 ## Table of contents
 
-- [Overview](#overview)
-- [Current foundation scope](#current-foundation-scope)
-- [Architecture](#architecture)
-- [Project structure](#project-structure)
-- [Technology stack](#technology-stack)
-- [Prerequisites](#prerequisites)
-- [Setup](#setup)
-- [Usage](#usage)
-- [Environment variables](#environment-variables)
-- [API and health checks](#api-and-health-checks)
-- [Database migrations](#database-migrations)
-- [Testing and quality](#testing-and-quality)
-- [Development standards](#development-standards)
-- [AI-agent workflow](#ai-agent-workflow)
-- [Git workflow](#git-workflow)
-- [Security and privacy](#security-and-privacy)
-- [Known limitations](#known-limitations)
-- [Roadmap](#roadmap)
-- [FAQ](#faq)
-- [AI and ownership boundary](#ai-and-ownership-boundary)
+- [LostLink](#lostlink)
+  - [Table of contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Current foundation scope](#current-foundation-scope)
+  - [Architecture](#architecture)
+  - [Project structure](#project-structure)
+  - [Technology stack](#technology-stack)
+    - [Web](#web)
+    - [Go API](#go-api)
+    - [Python AI service](#python-ai-service)
+    - [Infrastructure](#infrastructure)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+    - [1. Clone and select `develop`](#1-clone-and-select-develop)
+    - [2. Create local environment configuration](#2-create-local-environment-configuration)
+    - [3. Install web dependencies](#3-install-web-dependencies)
+    - [4. Install Go dependencies](#4-install-go-dependencies)
+    - [5. Install Python dependencies](#5-install-python-dependencies)
+  - [Usage](#usage)
+    - [Run the integrated environment](#run-the-integrated-environment)
+    - [Run services separately](#run-services-separately)
+    - [Make commands](#make-commands)
+  - [Environment variables](#environment-variables)
+  - [API and health checks](#api-and-health-checks)
+    - [Public Go API through Caddy](#public-go-api-through-caddy)
+    - [Direct service routes](#direct-service-routes)
+  - [Database migrations](#database-migrations)
+  - [Testing and quality](#testing-and-quality)
+    - [Web](#web-1)
+    - [Go API](#go-api-1)
+    - [Python AI service](#python-ai-service-1)
+    - [Full quality checks](#full-quality-checks)
+  - [Development standards](#development-standards)
+  - [AI-agent workflow](#ai-agent-workflow)
+  - [Git workflow](#git-workflow)
+  - [Security and privacy](#security-and-privacy)
+  - [Known limitations](#known-limitations)
+  - [Roadmap](#roadmap)
+  - [FAQ](#faq)
+    - [Why can AI similarity not approve a claim?](#why-can-ai-similarity-not-approve-a-claim)
+    - [Why can the browser not call the AI service directly?](#why-can-the-browser-not-call-the-ai-service-directly)
+    - [Why are PostgreSQL, MinIO, and Python not published locally?](#why-are-postgresql-minio-and-python-not-published-locally)
+    - [Why are JWT variables present when authentication is unavailable?](#why-are-jwt-variables-present-when-authentication-is-unavailable)
+    - [Why is the AI service OpenAPI schema disabled?](#why-is-the-ai-service-openapi-schema-disabled)
+    - [Should I edit the existing migration?](#should-i-edit-the-existing-migration)
+  - [AI and ownership boundary](#ai-and-ownership-boundary)
 
 ## Overview
 
@@ -515,5 +535,3 @@ No. Add a new sequential paired up/down migration. Applied migration history mus
 ## AI and ownership boundary
 
 LostLink's AI capability is a discovery aid, not an ownership authority. Item similarity and ownership verification remain separate modules, policies, DTOs, permissions, and audit trails.
-
-LostLink ใช้ AI เพื่อช่วยค้นหารายงานของหายและของที่พบซึ่งอาจเกี่ยวข้องกันเท่านั้น คะแนนความคล้ายคลึงไม่ใช่หลักฐานยืนยันความเป็นเจ้าของ การอนุมัติการรับของคืนต้องผ่านกระบวนการตรวจสอบสิทธิ์และการพิจารณาของผู้รับผิดชอบแยกต่างหาก
