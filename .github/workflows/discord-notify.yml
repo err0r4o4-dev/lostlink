@@ -1,0 +1,198 @@
+name: Discord CI notification
+
+on:
+  workflow_run:
+    workflows:
+      - Quality gates
+      - Advanced quality gates
+      - CodeQL
+      - Pull request policy
+    types: [completed]
+
+# The event payload already contains every field used below. The notification
+# workflow does not need repository or Actions API access.
+permissions: {}
+
+concurrency:
+  group: discord-notification-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Send sanitized result to Discord
+    if: github.event.workflow_run.repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      LOSTLINK_REPOSITORY: ${{ github.event.workflow_run.repository.full_name }}
+      LOSTLINK_WORKFLOW: ${{ github.event.workflow_run.name }}
+      LOSTLINK_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      LOSTLINK_EVENT: ${{ github.event.workflow_run.event }}
+      LOSTLINK_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      LOSTLINK_SHA: ${{ github.event.workflow_run.head_sha }}
+      LOSTLINK_ACTOR: ${{ github.event.workflow_run.actor.login }}
+      LOSTLINK_RUN_URL: ${{ github.event.workflow_run.html_url }}
+      LOSTLINK_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      LOSTLINK_CREATED_AT: ${{ github.event.workflow_run.created_at }}
+      LOSTLINK_UPDATED_AT: ${{ github.event.workflow_run.updated_at }}
+      LOSTLINK_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+    steps:
+      - name: Build and send metadata-only notification
+        shell: python
+        run: |
+          import datetime as dt
+          import json
+          import os
+          import re
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          webhook = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+          if not webhook:
+              raise SystemExit(
+                  "DISCORD_WEBHOOK_URL is not configured. See "
+                  "docs/runbooks/discord-ci-notifications.md."
+              )
+
+          parsed = urllib.parse.urlparse(webhook)
+          allowed_hosts = {
+              "discord.com",
+              "canary.discord.com",
+              "ptb.discord.com",
+              "discordapp.com",
+          }
+          webhook_path = re.compile(r"^/api(?:/v[0-9]+)?/webhooks/[0-9]+/[^/]+$")
+          if (
+              parsed.scheme != "https"
+              or parsed.hostname not in allowed_hosts
+              or not webhook_path.fullmatch(parsed.path)
+          ):
+              raise SystemExit("DISCORD_WEBHOOK_URL is not a permitted Discord webhook URL.")
+
+          control_characters = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+          def safe_text(value, limit):
+              text = control_characters.sub("", str(value or "unknown")).strip()
+              # Prevent event-controlled metadata from creating misleading Markdown.
+              for character in ("\\", "`", "*", "_", "~", "[", "]", "(", ")", "<", ">", "|"):
+                  text = text.replace(character, f"\\{character}")
+              return (text or "unknown")[:limit]
+
+          def parse_time(value):
+              if not value:
+                  return None
+              return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+          conclusion = os.environ.get("LOSTLINK_CONCLUSION", "unknown").lower()
+          appearances = {
+              "success": ("✅", 0x2ECC71),
+              "failure": ("❌", 0xE74C3C),
+              "cancelled": ("🟡", 0xF1C40F),
+              "timed_out": ("⏰", 0xE67E22),
+              "action_required": ("⚠️", 0xE67E22),
+              "neutral": ("ℹ️", 0x3498DB),
+              "skipped": ("⏭️", 0x95A5A6),
+          }
+          icon, color = appearances.get(conclusion, ("ℹ️", 0x95A5A6))
+
+          created_at = parse_time(os.environ.get("LOSTLINK_CREATED_AT"))
+          updated_at = parse_time(os.environ.get("LOSTLINK_UPDATED_AT"))
+          duration = "unknown"
+          if created_at and updated_at:
+              elapsed = max(0, int((updated_at - created_at).total_seconds()))
+              minutes, seconds = divmod(elapsed, 60)
+              duration = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
+
+          repository = safe_text(os.environ.get("LOSTLINK_REPOSITORY"), 256)
+          workflow = safe_text(os.environ.get("LOSTLINK_WORKFLOW"), 180)
+          branch = safe_text(os.environ.get("LOSTLINK_BRANCH"), 256)
+          actor = safe_text(os.environ.get("LOSTLINK_ACTOR"), 256)
+          event_name = safe_text(os.environ.get("LOSTLINK_EVENT"), 100)
+          attempt = safe_text(os.environ.get("LOSTLINK_RUN_ATTEMPT"), 20)
+          sha = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("LOSTLINK_SHA", ""))[:7]
+          sha = sha or "unknown"
+          run_url = os.environ.get("LOSTLINK_RUN_URL", "")
+          if not run_url.startswith("https://github.com/"):
+              raise SystemExit("The workflow run URL is not a permitted GitHub URL.")
+
+          fields = [
+              {"name": "Repository", "value": repository, "inline": True},
+              {"name": "Branch", "value": branch, "inline": True},
+              {"name": "Commit", "value": sha, "inline": True},
+              {"name": "Actor", "value": actor, "inline": True},
+              {"name": "Event", "value": event_name, "inline": True},
+              {"name": "Duration", "value": duration, "inline": True},
+          ]
+          pr_number = re.sub(r"[^0-9]", "", os.environ.get("LOSTLINK_PR_NUMBER", ""))
+          if pr_number:
+              fields.append(
+                  {
+                      "name": "Pull request",
+                      "value": f"[#{pr_number}](https://github.com/{repository}/pull/{pr_number})",
+                      "inline": True,
+                  }
+              )
+
+          timestamp = updated_at or dt.datetime.now(dt.timezone.utc)
+          payload = {
+              "username": "LostLink CI",
+              "allowed_mentions": {"parse": []},
+              "embeds": [
+                  {
+                      "title": f"{icon} {workflow} — {safe_text(conclusion, 40)}",
+                      "url": run_url,
+                      "description": f"Workflow run completed (attempt {attempt}).",
+                      "color": color,
+                      "fields": fields,
+                      "footer": {
+                          "text": "Metadata only · Raw logs remain in GitHub"
+                      },
+                      "timestamp": timestamp.isoformat(),
+                  }
+              ],
+          }
+          body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+          query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+          query["wait"] = ["true"]
+          target = urllib.parse.urlunparse(
+              parsed._replace(query=urllib.parse.urlencode(query, doseq=True))
+          )
+
+          for attempt_number in range(1, 4):
+              request = urllib.request.Request(
+                  target,
+                  data=body,
+                  headers={
+                      "Content-Type": "application/json",
+                      "User-Agent": "LostLink-CI/1.0",
+                  },
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=15) as response:
+                      if response.status not in (200, 204):
+                          raise SystemExit(
+                              f"Discord returned unexpected HTTP {response.status}."
+                          )
+                  print("Discord notification sent successfully.")
+                  break
+              except urllib.error.HTTPError as error:
+                  retryable = error.code == 429 or 500 <= error.code < 600
+                  if not retryable or attempt_number == 3:
+                      raise SystemExit(
+                          f"Discord notification failed with HTTP {error.code}."
+                      ) from None
+                  retry_after = error.headers.get("Retry-After", "")
+                  try:
+                      delay = min(10.0, max(1.0, float(retry_after)))
+                  except ValueError:
+                      delay = float(2 ** (attempt_number - 1))
+                  time.sleep(delay)
+              except urllib.error.URLError:
+                  if attempt_number == 3:
+                      raise SystemExit("Discord notification failed after three attempts.") from None
+                  time.sleep(float(2 ** (attempt_number - 1)))
