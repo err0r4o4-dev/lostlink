@@ -1,0 +1,37 @@
+name: Pull request policy
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Pull request policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_REF: ${{ github.base_ref }}
+      HEAD_REF: ${{ github.head_ref }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - name: Validate branch flow and title
+        shell: bash
+        run: |
+          if [[ "$BASE_REF" == "main" && "$HEAD_REF" != "develop" ]]; then
+            echo "Pull requests into main must come from develop." >&2
+            exit 1
+          fi
+
+          if [[ "$BASE_REF" == "develop" && ! "$HEAD_REF" =~ ^(task/|dependabot/) ]]; then
+            echo "Pull requests into develop must come from task/* or dependabot/*." >&2
+            exit 1
+          fi
+
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?:[[:space:]].+ ]]; then
+            echo "Use a Conventional Commit-style pull request title." >&2
+            exit 1
+          fi

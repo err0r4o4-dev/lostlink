@@ -1,0 +1,135 @@
+name: Advanced quality gates
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-audit:
+    name: Repository audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Check patch whitespace
+        run: git diff --check HEAD^
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+
+      - name: Audit repository and calculate scores
+        run: python .github/scripts/repository_audit.py
+
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lostlink-quality-report
+          path: .artifacts/quality-report.json
+          if-no-files-found: error
+          retention-days: 30
+
+  discover-stack:
+    name: Discover application stack
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.detect.outputs.node }}
+      python: ${{ steps.detect.outputs.python }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Detect supported manifests
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f package.json ]]; then echo "node=true" >> "$GITHUB_OUTPUT"; else echo "node=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ -f pyproject.toml || -f requirements.txt || -f setup.py ]]; then echo "python=true" >> "$GITHUB_OUTPUT"; else echo "python=false" >> "$GITHUB_OUTPUT"; fi
+
+  node-quality:
+    name: Node.js quality suite
+    needs: [repository-audit, discover-stack]
+    if: needs.discover-stack.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install locked dependencies
+        shell: bash
+        run: |
+          if [[ ! -f package-lock.json && ! -f npm-shrinkwrap.json ]]; then
+            echo "A committed npm lockfile is required for reproducible CI." >&2
+            exit 1
+          fi
+          npm ci
+
+      - name: Run available quality commands
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { spawnSync } = require('node:child_process');
+          const scripts = require('./package.json').scripts || {};
+          const checks = [
+            'lint', 'typecheck', 'test', 'coverage', 'db:validate',
+            'migration:test', 'api:contract', 'test:integration', 'test:e2e',
+            'architecture:check', 'performance:test', 'ai:evaluate', 'build'
+          ];
+          for (const name of checks) {
+            if (!scripts[name]) {
+              console.log(`SKIP ${name}: script not configured`);
+              continue;
+            }
+            console.log(`RUN ${name}`);
+            const result = spawnSync('npm', ['run', name], { stdio: 'inherit' });
+            if (result.status !== 0) process.exit(result.status || 1);
+          }
+          NODE
+
+  python-quality:
+    name: Python quality suite
+    needs: [repository-audit, discover-stack]
+    if: needs.discover-stack.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Compile Python sources
+        run: python -m compileall -q .
+
+      - name: Run standard-library tests when present
+        shell: bash
+        run: |
+          if [[ -d tests ]]; then
+            python -m unittest discover -s tests -v
+          else
+            echo "SKIP tests: tests/ does not exist"
+          fi
