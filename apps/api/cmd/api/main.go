@@ -1,13 +1,4 @@
 // Package main starts the public LostLink API.
-//
-// @title LostLink API
-// @version 0.1.0
-// @description Bootstrap public API. Product workflows are not implemented.
-// @BasePath /
-// @schemes http https
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
 package main
 
 import (
@@ -20,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/err0r4o4-dev/lostlink/apps/api/docs/swagger"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/database"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/server"

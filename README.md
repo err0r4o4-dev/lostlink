@@ -123,7 +123,7 @@ See the [system overview](docs/architecture/system-overview.md), [system flow](d
 │   │   └── tests/                   # Vitest and Playwright tests
 │   ├── api/
 │   │   ├── cmd/api/                 # Go API entry point
-│   │   ├── docs/swagger/            # Generated public Swagger artifacts
+│   │   ├── docs/                    # Embedded OpenAPI 3 contract
 │   │   └── internal/                # Modular application packages
 │   └── ai/
 │       ├── app/                      # Internal FastAPI application
@@ -356,6 +356,7 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 | --- | --- |
 | `GET http://localhost:8088/api/health` | API process liveness |
 | `GET http://localhost:8088/api/swagger/index.html` | Public Go Swagger UI |
+| `GET http://localhost:8088/api/swagger/openapi.yaml` | Canonical OpenAPI 3 document |
 
 ### Direct service routes
 
@@ -363,6 +364,7 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 | --- | --- | --- |
 | Go API | `GET http://localhost:8080/health` | Process liveness when run directly |
 | Go API | `GET http://localhost:8080/swagger/index.html` | Swagger UI when run directly |
+| Go API | `GET http://localhost:8080/swagger/openapi.yaml` | OpenAPI document when run directly |
 | Python AI | `GET http://localhost:8000/health` | Internal process liveness when run directly |
 
 Examples:
@@ -370,9 +372,10 @@ Examples:
 ```bash
 curl http://localhost:8088/api/health
 curl -i http://localhost:8088/api/swagger/index.html
+curl -i http://localhost:8088/api/swagger/openapi.yaml
 ```
 
-The AI service is internal in Docker Compose, and its OpenAPI JSON, Swagger UI, and ReDoc routes are deliberately disabled. Public product APIs will use REST/JSON under `/v1`; no product routes exist in the current bootstrap.
+The canonical public contract is [`apps/api/docs/swagger.yaml`](apps/api/docs/swagger.yaml). It follows an OpenAPI 3.0 `info` → `servers` → `tags` → `paths` → `components` structure and is embedded into the Go binary so the file and Swagger UI cannot drift. The AI service is internal in Docker Compose, and its OpenAPI JSON, Swagger UI, and ReDoc routes are deliberately disabled. Public product APIs will use REST/JSON under `/v1`; no product routes exist in the current bootstrap.
 
 ## Database migrations
 

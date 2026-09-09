@@ -4,7 +4,8 @@
 
 - Public application endpoints use JSON under `/v1`.
 - `/health` is an unversioned operational liveness endpoint.
-- Swagger UI is served at `/swagger/index.html`; its document describes public Go endpoints only.
+- The canonical OpenAPI 3.0 contract is `apps/api/docs/swagger.yaml` and is embedded into the Go API binary.
+- Swagger UI is served at `/swagger/index.html`, and the source document is served at `/swagger/openapi.yaml`; both describe public Go endpoints only.
 - Internal AI endpoints are not included in public Swagger.
 
 ## DTOs and errors
@@ -29,4 +30,3 @@ Use predictable status codes: 400 invalid syntax, 401 missing/invalid authentica
 ## Change discipline
 
 For every public endpoint change, update Swagger annotations/generated artifacts, route docs, Go behavior, web types/client, examples, and tests together. Protected endpoints declare BearerAuth and receive authentication plus authorization review. Breaking changes require an explicit version/migration plan.
-

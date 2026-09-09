@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -20,17 +21,18 @@ func New(logger *slog.Logger) http.Handler {
 	router := gin.New()
 	router.Use(gin.Recovery(), requestLogger(logger))
 	router.GET("/health", health)
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	swaggerUI := ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("openapi.yaml"))
+	router.GET("/swagger/*any", func(c *gin.Context) {
+		if c.Param("any") == "/openapi.yaml" {
+			c.Data(http.StatusOK, "application/yaml; charset=utf-8", apiDocs.OpenAPI)
+			return
+		}
+		swaggerUI(c)
+	})
 	return router
 }
 
 // health reports process liveness only.
-// @Summary API health
-// @Description Reports whether the API process is accepting HTTP requests.
-// @Tags operations
-// @Produce json
-// @Success 200 {object} HealthResponse
-// @Router /health [get]
 func health(c *gin.Context) {
 	c.JSON(http.StatusOK, HealthResponse{Status: "ok", Service: "api"})
 }

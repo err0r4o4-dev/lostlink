@@ -1,0 +1,70 @@
+openapi: 3.0.3
+info:
+  title: LostLink API
+  description: |
+    The public REST API for the LostLink university Lost & Found platform.
+
+    ## Current scope
+    The API currently exposes process health and public API documentation only.
+    Authentication, reports, matching, claims, verification, tracking,
+    notifications, and staff workflows are not implemented yet.
+
+    ## Privacy and ownership
+    Similarity assists discovery and never proves ownership. Private ownership
+    evidence must not be exposed through public discovery endpoints.
+
+    ## Authentication
+    Future protected endpoints will use JWT bearer authentication. The security
+    scheme is reserved here, but no authentication endpoint currently exists.
+  version: 0.1.0
+servers:
+  - url: /api
+    description: Public API through Caddy
+  - url: /
+    description: Go API when run directly
+tags:
+  - name: Operations
+    description: Process health and operational endpoints
+paths:
+  /health:
+    get:
+      tags: [Operations]
+      operationId: getHealth
+      summary: Get API health
+      description: Reports whether the Go API process is accepting HTTP requests.
+      responses:
+        "200":
+          description: API process is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                healthy:
+                  summary: Healthy API process
+                  value:
+                    status: ok
+                    service: api
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Reserved for future protected public endpoints.
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          description: Process health state.
+          example: ok
+        service:
+          type: string
+          description: Service identifier.
+          example: api
+      additionalProperties: false
