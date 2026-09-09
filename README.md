@@ -1,7 +1,5 @@
 # LostLink
 
-> LostLink uses similarity only to suggest potentially related reports. A match score is not proof of ownership, and ownership decisions require a separate authorized verification process.
-
 ## Table of contents
 
 - [LostLink](#lostlink)
@@ -37,6 +35,8 @@
     - [Python AI service](#python-ai-service-1)
     - [Full quality checks](#full-quality-checks)
   - [Development standards](#development-standards)
+    - [Before changing files](#before-changing-files)
+    - [Cross-cutting change checklist](#cross-cutting-change-checklist)
   - [AI-agent workflow](#ai-agent-workflow)
   - [Git workflow](#git-workflow)
   - [Security and privacy](#security-and-privacy)
@@ -428,6 +428,31 @@ make check
 GitHub Actions also runs repository auditing, service quality gates, a browser smoke test, Compose validation, pull-request policy checks, and CodeQL. Never claim that a check passed unless it completed successfully.
 
 ## Development standards
+
+### Before changing files
+
+1. Start from a scoped task using the [task template](docs/workflow/TASK_TEMPLATE.md). Declare the owner, feature, sub-scope, goal, acceptance criteria, allowed writes, read-only paths, forbidden paths, dependencies, required checks, and explicit exclusions.
+2. Inspect the applicable `AGENTS.md`, current Git status, affected code, contracts, configuration, and tests before editing. A nearer `AGENTS.md` may add stricter rules.
+3. Define observable pass/fail criteria and select only the roles and skills needed for the assigned scope.
+4. Make the smallest complete change. Preserve unrelated working-tree changes and do not combine cleanup or the next task with the current work.
+5. Run the narrow affected checks while iterating, then all checks required by the change type. Report only checks that actually completed and keep host/tool limitations separate from repository failures.
+6. Keep one task or frontend sub-scope per branch and pull request. Human review is required; agents do not stage, commit, push, create branches, open or merge pull requests unless explicitly asked.
+
+The current repository is a foundation, not authorization to implement planned product behavior. Authentication, reports, matching, claims, verification, tracking, notifications, and administration require separately assigned scopes.
+
+### Cross-cutting change checklist
+
+Some changes are intentionally coupled across the repository. Use this map before deciding that a change is local:
+
+| Change | Required accompanying work |
+| --- | --- |
+| Public Go route or DTO | Update Swagger/OpenAPI, API documentation, producers, consumers, authorization review, and contract/HTTP tests in the same coordinated scope. |
+| Database schema or query | Add a new sequential paired up/down migration, keep SQL parameterized and sqlc-compatible, update repositories/docs, and exercise migration directions on disposable PostgreSQL when practical. |
+| Authentication, RBAC, claims, uploads, or other sensitive data | Keep policy and workflow enforcement in Go; review least privilege, privacy, logging, retention/deletion, generic errors, and audit behavior; add security review and negative-path tests. |
+| Image handling | Validate content, size, and count; use server-generated object keys and private S3-compatible storage; expose objects only through authorized short-lived access. Never store Base64 image blobs in PostgreSQL. |
+| AI matching or model behavior | Keep Go orchestration separate from Python computation; version evaluation evidence, datasets, metrics, thresholds, and regression results. Similarity may rank candidates but must never approve ownership. |
+| Frontend feature | Separate UI/presentation ownership from API/state/form integration ownership, coordinate shared contracts, and test loading, error, authorization, accessibility, and responsive states as applicable. |
+| Environment, Docker, routing, or deployment | Synchronize `.env.example`, Compose/Docker/Caddy configuration, health checks, documentation, persistence, exposure, and shutdown behavior; validate the rendered Compose configuration. |
 
 - Keep the Go API as the only public backend and preserve service ownership boundaries.
 - Use explicit request and response DTOs; never serialize persistence or AI-internal models directly.
