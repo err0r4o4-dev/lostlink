@@ -1,0 +1,4 @@
+interface:
+  display_name: "Accessibility UI Review"
+  short_description: "Review LostLink UI accessibility across viewports"
+  default_prompt: "Use $accessibility-ui-review to audit this LostLink interface for accessibility."

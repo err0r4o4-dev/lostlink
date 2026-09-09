@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design System Tokens"
+  short_description: "Govern all LostLink visual design tokens"
+  default_prompt: "Use $design-system-tokens to select or change canonical LostLink visual tokens."

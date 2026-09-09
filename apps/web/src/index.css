@@ -1,25 +1,110 @@
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/noto-sans-thai/wght.css";
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
-:root {
-  color: #17211b;
-  background: #f5f8f5;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+@layer base {
+  :root {
+    background: var(--color-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: var(--color-border);
+  }
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    background: var(--color-canvas);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-text-primary);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-brand);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-brand-active);
+  }
 }
 
-* {
-  box-sizing: border-box;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  margin: 0;
-}
+@layer components {
+  .glass-panel {
+    border-color: var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-glass)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(var(--glass-saturation));
+  }
 
-button,
-a {
-  outline-offset: 3px;
-}
+  .ui-transition {
+    transition-duration: var(--motion-standard);
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-timing-function: var(--ease-standard);
+  }
 
+  .pressable:active:not(:disabled, [aria-disabled="true"]) {
+    transform: scale(var(--press-scale));
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(var(--spacing-2), env(safe-area-inset-bottom));
+  }
+
+  .app-backdrop {
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--color-brand-soft) 75%, transparent), transparent 34rem),
+      radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--color-info) 8%, transparent), transparent 28rem),
+      var(--color-canvas);
+  }
+
+  .app-shell-grid {
+    grid-template-columns: var(--layout-sidebar) minmax(0, 1fr);
+  }
+
+  .mobile-content-safe {
+    padding-bottom: calc(var(--layout-mobile-nav) + env(safe-area-inset-bottom) + var(--spacing-6));
+  }
+}

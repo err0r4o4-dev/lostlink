@@ -2,6 +2,23 @@
 
 Bootstrap inventory created 2026-09-09. All source paths were inspected read-only. “Dependencies” describes expected frameworks/tools or companion guidance, not packages copied into LostLink.
 
+## Active LostLink UI skills
+
+Phase 1 UI governance established one non-overlapping visual skill architecture. Exact design values belong only to `design-system-tokens`; all other UI skills consume them.
+
+| Active skill | Responsibility | Status |
+| --- | --- | --- |
+| `apple-responsive-web-ui` | Primary Apple-inspired, web-first visual direction and cross-device consistency | NEW primary |
+| `design-system-tokens` | Exclusive global visual token ownership | NEW specialist |
+| `responsive-layout-engineering` | Responsive structure and breakpoint application | RENAMED and narrowed from `responsive-web-ui` |
+| `cupertino-mobile-ux` | Small-touch-device navigation, sheets, safe areas, and ergonomics | NEW specialist |
+| `liquid-glass-web` | Selective glass surfaces and readable fallbacks | NEW specialist |
+| `micro-interaction-motion` | Interaction feedback, transitions, and reduced-motion behavior | NEW specialist |
+| `accessibility-ui-review` | Accessibility review only | NEW specialist; extracted from `responsive-web-ui` |
+| `pixel-perfect-ui-review` | Final visual QA only | NEW specialist |
+
+`responsive-web-ui` is deprecated and inactive. Historical source names below remain provenance records, not installed skills or alternate owners.
+
 Read-only source roots:
 
 - `D:\!Project\Apartment-Billing(Web_Application)\.agent`
@@ -50,7 +67,7 @@ Paths in the tables below are relative to their named source root.
 
 | Skill | Purpose / trigger | Dependencies | Reusable | Project assumptions | Decision |
 | --- | --- | --- | --- | --- | --- |
-| `accessible-web-ui` | accessibility implementation/audit | semantic UI/browser tests | High | Thai/resident examples | ADAPT into responsive web UI |
+| `accessible-web-ui` | accessibility implementation/audit | semantic UI/browser tests | High | Thai/resident examples | HISTORICAL SOURCE; adapted into `accessibility-ui-review` |
 | `build-apartment-billing-go-api` | Go/Gin implementation | pgx/sqlc/Go tests | High | org-scoped billing | ADAPT |
 | `build-apartment-billing-web` | React implementation | Query/RHF/Zod/Tailwind | High | Thai/org context | ADAPT |
 | `evolve-apartment-billing-contracts` | public REST evolution | Go/web/docs/tests | High | org routes | ADAPT |
@@ -59,19 +76,19 @@ Paths in the tables below are relative to their named source root.
 | `migrate-apartment-billing-database` | migrations/sqlc | Postgres/golang-migrate | High | tenancy/money | ADAPT |
 | `operate-apartment-billing-infrastructure` | Docker/Caddy/CI | Compose/Actions | High | prior topology | ADAPT into two focused skills |
 | `protect-apartment-billing-data` | privacy/security | data flows/auth | High | resident/billing data | ADAPT |
-| `responsive-web-saas` | responsive recomposition | Tailwind/browser | High | billing dashboards/Thai | ADAPT |
+| `responsive-web-saas` | responsive recomposition | Tailwind/browser | High | billing dashboards/Thai | HISTORICAL SOURCE; adapted into `responsive-layout-engineering` |
 | `review-apartment-billing-change` | review-only findings | diff/code/tests | High | billing invariants | ADAPT |
 | `test-apartment-billing-web` | frontend testing | Vitest/RTL/Playwright | High | billing journeys | ADAPT into testing/e2e |
 | `develop-apartment-billing-feature` | cross-stack feature work | all app layers | Medium | billing/tenancy | ADAPT into project context/scope |
 | `diagnose-apartment-billing-system` | diagnosis | all app layers | High | billing/PDF cases | ADAPT into testing/review, no duplicate skill |
-| `design-system-governance` | token consistency | UI system | High | Apartment theme | SKIP until design-system work exists |
-| `frontend-ui-verification` | final visual QA | browser screenshots | High | Apartment viewports | ADAPT into responsive/testing |
+| `design-system-governance` | token consistency | UI system | High | Apartment theme | HISTORICAL SOURCE; concepts adapted into `design-system-tokens` |
+| `frontend-ui-verification` | final visual QA | browser screenshots | High | Apartment viewports | HISTORICAL SOURCE; concepts adapted into `pixel-perfect-ui-review` |
 | `form-workflow-ux` | complex form UX | frontend stack | Medium | billing forms | SKIP until feature forms exist |
-| `pixel-perfect-ui` | reference matching | image/Figma/browser | High | Apartment naming only | SKIP; generic installed tooling can serve later |
+| `pixel-perfect-ui` | reference matching | image/Figma/browser | High | Apartment naming only | SKIP; remains inactive and is not the project review skill |
 | `typography-system` | type-system work | fonts/tokens | High | mostly generic | SKIP; no current typography task |
 | `dashboard-data-visualization` | charts | chart library/design | Medium | billing metrics | SKIP; no current dashboard task |
 | `saas-data-table-ux` | data-table behavior | UI stack | Medium | billing entities | SKIP until table work exists |
-| `apple-web-saas-ui` | visual language | UI stack | Low | prescribed aesthetic | SKIP |
+| `apple-web-saas-ui` | visual language | UI stack | Low | prescribed aesthetic | SKIP; remains inactive and is not `apple-responsive-web-ui` |
 | `audit-apartment-billing-web` | broad web audit | specialist UI skills | Medium | billing/privacy model | SKIP; review/testing cover bootstrap |
 | `billing-document-layout` | fixed documents | PDF/print | No | invoices/tax docs | SKIP |
 | `build-apartment-billing-domain` | billing rules | Go/Postgres | No | entirely billing-specific | SKIP |

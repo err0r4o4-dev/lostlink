@@ -1,6 +1,6 @@
 # LostLink Skill Sources
 
-Source tracking for the bootstrap completed 2026-09-09. `ADAPT` means concepts were rewritten for LostLink; no source file was copied verbatim. `NEW` means the project need had no suitable source equivalent.
+Source tracking for the bootstrap completed 2026-09-09 and the approved UI skill architecture refactor. `ADAPT` means concepts were rewritten for LostLink; no source file was copied verbatim. `NEW` means the project need had no suitable source equivalent.
 
 ## Repository guide provenance
 
@@ -11,7 +11,14 @@ Source tracking for the bootstrap completed 2026-09-09. `ADAPT` means concepts w
 | `lostlink-project-context` | Apartment `develop-apartment-billing-feature`; Pinto `karpathy-guidelines` | ADAPT | Replaced billing/tenancy with LostLink stages, task ownership, AI/verification boundary |
 | `architecture-design` | Apartment architecture rule; Pinto `improve-codebase-architecture` | ADAPT | Added Go-to-AI seam, object storage, pgvector; removed PDF and CodeGraph requirements |
 | `react-typescript-frontend` | Apartment `build-apartment-billing-web` | ADAPT | Retained React/Query/RHF/Zod layering; removed Thai and organization assumptions |
-| `responsive-web-ui` | Apartment `responsive-web-saas`, `accessible-web-ui` | ADAPT | Retained responsive/accessibility checks; removed billing table priorities |
+| `responsive-layout-engineering` | Apartment `responsive-web-saas`; former LostLink `responsive-web-ui` | ADAPT | Renamed and restricted to responsive structure; accessibility ownership removed |
+| `accessibility-ui-review` | Apartment `accessible-web-ui`; former LostLink `responsive-web-ui` | ADAPT | Extracted keyboard, focus, contrast, semantic, touch, zoom, and reduced-motion review into a review-only skill |
+| `apple-responsive-web-ui` | approved LostLink UI architecture | NEW | Defines project-specific Apple-inspired web-first direction without exact token values |
+| `design-system-tokens` | Apartment `design-system-governance`; approved LostLink palette | ADAPT | Centralized all exact visual values and removed Apartment identity |
+| `cupertino-mobile-ux` | approved LostLink UI architecture | NEW | Limited Cupertino patterns to small touch devices; cannot control desktop design |
+| `liquid-glass-web` | approved LostLink UI architecture | NEW | Limited glass to selective layered surfaces with readable fallbacks |
+| `micro-interaction-motion` | approved LostLink UI architecture | NEW | Separated interaction motion from static appearance and token values |
+| `pixel-perfect-ui-review` | Apartment `frontend-ui-verification`; approved LostLink UI architecture | ADAPT | Final review only; cannot redesign or implement |
 | `frontend-api-integration` | Apartment web architecture and contract skill | ADAPT | Added explicit FE integration ownership and LostLink public/private DTO boundary |
 | `go-gin-backend` | Apartment `build-apartment-billing-go-api` | ADAPT | Added Swagger and internal AI/storage orchestration; removed organization tenancy |
 | `jwt-rbac-security` | Apartment auth/security rules and skills | ADAPT | Replaced bcrypt opaque-session design with Argon2id, JWT access, rotating refresh sessions |

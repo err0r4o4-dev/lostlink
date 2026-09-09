@@ -1,0 +1,4 @@
+interface:
+  display_name: "Responsive Layout Engineering"
+  short_description: "Engineer responsive LostLink layout transformations"
+  default_prompt: "Use $responsive-layout-engineering to recompose this LostLink layout across viewports."
