@@ -18,7 +18,7 @@ type Config struct {
 	JWTAudience        string
 	JWTAccessTTL       time.Duration
 	RefreshTTL         time.Duration
-	JWTSigningKey      string
+	JWTSecret          string
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -32,7 +32,7 @@ func Load() (Config, error) {
 		WebOrigin:          valueOrDefault("WEB_ORIGIN", "http://localhost:8088"),
 		JWTIssuer:          valueOrDefault("JWT_ISSUER", "lostlink-api"),
 		JWTAudience:        valueOrDefault("JWT_AUDIENCE", "lostlink-web"),
-		JWTSigningKey:      os.Getenv("JWT_SIGNING_KEY"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
 		GoogleClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		GoogleRedirectURL:  os.Getenv("GOOGLE_OAUTH_REDIRECT_URL"),
@@ -51,11 +51,11 @@ func Load() (Config, error) {
 	if cfg.RefreshTTL, err = time.ParseDuration(valueOrDefault("JWT_REFRESH_TTL", "720h")); err != nil || cfg.RefreshTTL <= cfg.JWTAccessTTL {
 		return Config{}, fmt.Errorf("JWT_REFRESH_TTL must be longer than JWT_ACCESS_TTL")
 	}
-	if len(cfg.JWTSigningKey) < 32 {
-		return Config{}, fmt.Errorf("JWT_SIGNING_KEY must contain at least 32 bytes")
+	if len(cfg.JWTSecret) < 32 {
+		return Config{}, fmt.Errorf("JWT_SECRET must contain at least 32 bytes")
 	}
-	if cfg.Environment == "production" && cfg.JWTSigningKey == "replace-me-with-at-least-32-random-bytes" {
-		return Config{}, fmt.Errorf("JWT_SIGNING_KEY placeholder is forbidden in production")
+	if cfg.Environment == "production" && cfg.JWTSecret == "replace-me-with-at-least-32-random-bytes" {
+		return Config{}, fmt.Errorf("JWT_SECRET placeholder is forbidden in production")
 	}
 	googleValues := 0
 	for _, value := range []string{cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL} {

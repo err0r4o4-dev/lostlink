@@ -344,7 +344,7 @@ The authoritative local template is [`.env.example`](.env.example).
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Local MinIO administrator credentials | Used by Compose |
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET` | Future Go storage target | Wired into Compose; product storage is not implemented |
 | `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_USE_SSL` | Future Go storage access | Wired into Compose; product storage is not implemented |
-| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `JWT_SIGNING_KEY` | Access/refresh session configuration | Used; replace the local signing-key placeholder before shared or production use |
+| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `JWT_SECRET` | Access/refresh session configuration | Used; replace the local secret placeholder before shared or production use |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URL` | Optional Google OpenID Connect web client | Configure all three together; redirect URL must exactly match Google Cloud |
 
 Never commit `.env`, real credentials, tokens, keys, or production connection strings.

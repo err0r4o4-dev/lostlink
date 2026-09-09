@@ -43,7 +43,7 @@ func main() {
 	var googleOAuth *auth.GoogleOAuth
 	if pool != nil {
 		authService = auth.NewService(auth.NewRepository(pool), auth.NewTokenManager(
-			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSigningKey, cfg.JWTAccessTTL, cfg.RefreshTTL,
+			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.RefreshTTL,
 		))
 		reportService = report.NewService(report.NewRepository(pool))
 		googleOAuth = auth.NewGoogleOAuth(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)

@@ -9,8 +9,8 @@
 - Refresh token: longer-lived session credential (target 30 days), rotated on every use, revocable, and tracked server-side by a hashed identifier/session record.
 - Minimal JWT claims: `sub`, `role`, `iss`, `aud`, `iat`, `exp`, `jti`. Do not include password data, phone numbers, private ownership answers, sensitive item secrets, or mutable profile data.
 
-The current API pins HS256 and requires a signing key of at least 32 bytes. The
-key stays server-side and must be replaced outside local development. A future
+The current API pins HS256 and reads only `JWT_SECRET`, which must contain at
+least 32 bytes. The secret stays server-side and must be replaced outside local development. A future
 production hardening decision should migrate to Ed25519/EdDSA (or another
 approved asymmetric scheme) with an explicit overlap and rotation plan.
 

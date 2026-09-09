@@ -50,7 +50,7 @@ services:
       JWT_AUDIENCE: ${JWT_AUDIENCE:-lostlink-web}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
-      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-replace-me-with-at-least-32-random-bytes}
+      JWT_SECRET: ${JWT_SECRET:-replace-me-with-at-least-32-random-bytes}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GOOGLE_OAUTH_REDIRECT_URL: ${GOOGLE_OAUTH_REDIRECT_URL:-}

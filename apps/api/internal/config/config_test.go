@@ -8,7 +8,7 @@ func setValidAuthEnvironment(t *testing.T) {
 	t.Setenv("API_PORT", "8080")
 	t.Setenv("JWT_ACCESS_TTL", "15m")
 	t.Setenv("JWT_REFRESH_TTL", "720h")
-	t.Setenv("JWT_SIGNING_KEY", "test-only-signing-key-at-least-32-bytes")
+	t.Setenv("JWT_SECRET", "test-only-signing-key-at-least-32-bytes")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 	t.Setenv("GOOGLE_OAUTH_REDIRECT_URL", "")
@@ -46,10 +46,20 @@ func TestLoadRejectsInvalidPort(t *testing.T) {
 
 func TestLoadRejectsShortSigningKey(t *testing.T) {
 	setValidAuthEnvironment(t)
-	t.Setenv("JWT_SIGNING_KEY", "short")
+	t.Setenv("JWT_SECRET", "short")
 
 	if _, err := Load(); err == nil {
 		t.Fatal("Load() expected an error for a short JWT signing key")
+	}
+}
+
+func TestLoadDoesNotAcceptLegacyJWTSigningKey(t *testing.T) {
+	setValidAuthEnvironment(t)
+	t.Setenv("JWT_SECRET", "")
+	t.Setenv("JWT_SIGNING_KEY", "legacy-signing-key-at-least-32-bytes")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() expected JWT_SIGNING_KEY to be ignored")
 	}
 }
 
@@ -86,7 +96,7 @@ func TestLoadRejectsPartialGoogleOAuthConfiguration(t *testing.T) {
 func TestLoadRequiresHTTPSGoogleCallbackInProduction(t *testing.T) {
 	setValidAuthEnvironment(t)
 	t.Setenv("APP_ENV", "production")
-	t.Setenv("JWT_SIGNING_KEY", "production-only-signing-key-at-least-32-bytes")
+	t.Setenv("JWT_SECRET", "production-only-signing-key-at-least-32-bytes")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "google-client-id")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "google-client-secret")
 	t.Setenv("GOOGLE_OAUTH_REDIRECT_URL", "http://example.com/api/v1/auth/google/callback")
