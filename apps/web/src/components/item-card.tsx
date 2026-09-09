@@ -2,6 +2,7 @@ import { CalendarDays, Image as ImageIcon, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Card, StatusBadge } from './ui'
+import { Localize } from '../i18n/language'
 
 export interface ItemSummary {
   category?: string
@@ -17,7 +18,7 @@ export interface ItemSummary {
 
 export function ItemCard({ item }: { item: ItemSummary }) {
   return (
-    <Card className="ui-transition group overflow-hidden hover:shadow-floating">
+    <Localize><Card className="ui-transition group overflow-hidden hover:shadow-floating">
       <Link className="block rounded-card" to={`/items/${encodeURIComponent(item.id)}`}>
         <div className="flex aspect-video items-center justify-center bg-surface-secondary">
           {item.imageUrl ? (
@@ -40,6 +41,6 @@ export function ItemCard({ item }: { item: ItemSummary }) {
           </div>
         </div>
       </Link>
-    </Card>
+    </Card></Localize>
   )
 }

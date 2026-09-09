@@ -97,3 +97,24 @@ test('moves focus to main content after client-side navigation', async ({ page }
   await expect(page).toHaveURL(/\/report$/)
   await expect(page.getByRole('main')).toBeFocused()
 })
+
+test('switches between Thai and English next to the notification action', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+
+  const notificationAction = page.getByRole('link', { name: 'Notifications' })
+  const thaiLanguageAction = page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })
+  await expect(notificationAction).toBeVisible()
+  await expect(thaiLanguageAction).toBeVisible()
+  await expect(notificationAction.locator('xpath=following-sibling::*[1]')).toHaveAttribute('aria-label', 'เปลี่ยนภาษาเป็นไทย')
+
+  await thaiLanguageAction.click()
+  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'th')
+
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await page.getByRole('button', { name: 'Switch language to English' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: /Lost items deserve/ })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+})

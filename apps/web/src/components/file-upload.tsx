@@ -2,6 +2,7 @@ import { ImagePlus, Trash2, UploadCloud } from 'lucide-react'
 import { useEffect, useId, useState, type ChangeEvent, type DragEvent } from 'react'
 
 import { Button, Notice } from './ui'
+import { Localize } from '../i18n/language'
 
 const previewLimitBytes = 5 * 1024 * 1024
 const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -59,7 +60,7 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
 
   if (file && previewUrl) {
     return (
-      <div className="overflow-hidden rounded-card border border-border bg-surface">
+      <Localize><div className="overflow-hidden rounded-card border border-border bg-surface">
         <img src={previewUrl} alt="Selected item preview" className="aspect-video w-full object-cover" />
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="min-w-0">
@@ -70,12 +71,12 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
             <Trash2 aria-hidden="true" className="size-4" /> Remove
           </Button>
         </div>
-      </div>
+      </div></Localize>
     )
   }
 
   return (
-    <div>
+    <Localize><div>
       <label
         htmlFor={inputId}
         onDragOver={(event) => event.preventDefault()}
@@ -90,6 +91,6 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
       </label>
       <input id={inputId} className="sr-only" type="file" accept={acceptedTypes.join(',')} disabled={disabled} onChange={onInputChange} />
       {error && <div className="mt-3"><Notice title="Image not accepted" tone="error">{error}</Notice></div>}
-    </div>
+    </div></Localize>
   )
 }

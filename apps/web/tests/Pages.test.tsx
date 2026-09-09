@@ -7,6 +7,7 @@ import { LoginPage } from '../src/pages/AuthPages'
 import { ReportLostPage } from '../src/pages/ReportPages'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
+import { LanguageProvider } from '../src/i18n/language'
 
 const approvedRoutes = [
   '/', '/discover', '/search', '/report', '/report/lost', '/report/found', '/items/item-reference',
@@ -39,6 +40,17 @@ describe('frontend completion routes', () => {
     expect(await screen.findByRole('heading', { name: 'Review your report' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submission unavailable' })).toBeDisabled()
     expect(screen.getByText('Integration pending')).toBeInTheDocument()
+  })
+
+  it('localizes page copy, form labels, and validation feedback in Thai', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('lostlink-language', 'th')
+    render(<LanguageProvider><MemoryRouter><ReportLostPage /></MemoryRouter></LanguageProvider>)
+
+    expect(screen.getByRole('heading', { level: 1, name: 'แจ้งของหาย' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/^ชื่อสิ่งของ/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'ตรวจสอบประกาศ' }))
+    expect(await screen.findByText('กรอกชื่อสิ่งของให้ชัดเจน')).toBeInTheDocument()
   })
 
   it('validates login and exposes the missing authentication boundary', async () => {

@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, Clock3, LoaderCircle, type LucideIcon } from
 import type { ReactNode } from 'react'
 
 import { cn } from '../../lib/utils'
+import { Localize } from '../../i18n/language'
 import { Button } from './button'
 
 interface NoticeProps {
@@ -21,13 +22,13 @@ const noticeStyles = {
 export function Notice({ announce = false, children, title, tone = 'info' }: NoticeProps) {
   const { className, icon: Icon } = noticeStyles[tone]
   return (
-    <div
+    <Localize><div
       className={cn('flex gap-3 rounded-card p-4 text-caption', className)}
       role={tone === 'error' ? 'alert' : announce ? 'status' : undefined}
     >
       <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
       <div><p className="font-semibold">{title}</p><div className="mt-1 leading-6">{children}</div></div>
-    </div>
+    </div></Localize>
   )
 }
 
@@ -47,21 +48,21 @@ interface ErrorStateProps {
 
 export function ErrorState({ description, onRetry, title = 'Something went wrong' }: ErrorStateProps) {
   return (
-    <div className="rounded-card border border-error/20 bg-error/10 p-6 text-center" role="alert">
+    <Localize><div className="rounded-card border border-error/20 bg-error/10 p-6 text-center" role="alert">
       <AlertCircle aria-hidden="true" className="mx-auto size-8 text-error-strong" />
       <h3 className="mt-3 text-card font-semibold">{title}</h3>
       <p className="mx-auto mt-2 max-w-lg text-caption text-text-secondary-strong">{description}</p>
       {onRetry && <Button className="mt-5" variant="secondary" onClick={onRetry}>Try again</Button>}
-    </div>
+    </div></Localize>
   )
 }
 
 export function LoadingState({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex min-h-40 items-center justify-center gap-3 rounded-card bg-surface-secondary text-caption text-text-secondary" role="status">
+    <Localize><div className="flex min-h-40 items-center justify-center gap-3 rounded-card bg-surface-secondary text-caption text-text-secondary" role="status">
       <LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />
       <span>{label}</span>
-    </div>
+    </div></Localize>
   )
 }
 

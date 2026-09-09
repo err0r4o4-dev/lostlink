@@ -12,6 +12,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 
 import { Badge, Card, EmptyState, SearchField, buttonVariants } from '../components/ui'
+import { Localize } from '../i18n/language'
 
 const principles = [
   {
@@ -55,7 +56,7 @@ export function HomePage() {
   }, [location.key])
 
   return (
-    <main
+    <Localize><main
       ref={mainRef}
       id="main-content"
       tabIndex={-1}
@@ -199,6 +200,6 @@ export function HomePage() {
           ))}
         </div>
       </section>
-    </main>
+    </main></Localize>
   )
 }

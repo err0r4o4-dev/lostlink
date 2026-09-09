@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 
+import { Localize } from '../../i18n/language'
+
 interface PageHeaderProps {
   actions?: ReactNode
   description: string
@@ -32,8 +34,10 @@ export function PageContainer({ children, width = 'wide' }: { children: ReactNod
   }, [location.key])
 
   return (
-    <main ref={mainRef} id="main-content" tabIndex={-1} className={`mobile-content-safe mx-auto px-5 py-8 focus:outline-none md:px-7 md:py-10 lg:px-8 xl:px-10 ${width === 'form' ? 'max-w-5xl' : 'max-w-content'}`}>
-      {children}
-    </main>
+    <Localize>
+      <main ref={mainRef} id="main-content" tabIndex={-1} className={`mobile-content-safe mx-auto px-5 py-8 focus:outline-none md:px-7 md:py-10 lg:px-8 xl:px-10 ${width === 'form' ? 'max-w-5xl' : 'max-w-content'}`}>
+        {children}
+      </main>
+    </Localize>
   )
 }

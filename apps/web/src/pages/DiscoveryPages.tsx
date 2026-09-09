@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { RouteCard } from '../components/route-card'
 import { Badge, Button, Card, EmptyState, Input, IntegrationNotice, Notice, PageContainer, PageHeader, SearchField, Select, buttonVariants } from '../components/ui'
+import { Localize } from '../i18n/language'
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -83,12 +84,12 @@ export function MatchesPage() {
 
 function ComparisonPanel({ title }: { title: string }) {
   return (
-    <Card className="p-5 md:p-6">
+    <Localize><Card className="p-5 md:p-6">
       <span className="flex size-11 items-center justify-center rounded-control bg-surface-secondary text-text-secondary"><ImageIcon aria-hidden="true" className="size-5" /></span>
       <h2 className="mt-5 text-card font-semibold">{title}</h2>
       <p className="mt-2 text-caption text-text-secondary">No report attributes are available from the API.</p>
       <dl className="mt-5 space-y-3 text-caption"><div className="flex justify-between gap-4"><dt className="text-text-secondary">Category</dt><dd>Unavailable</dd></div><div className="flex justify-between gap-4"><dt className="text-text-secondary">Date proximity</dt><dd>Unavailable</dd></div><div className="flex justify-between gap-4"><dt className="text-text-secondary">Location proximity</dt><dd>Unavailable</dd></div></dl>
-    </Card>
+    </Card></Localize>
   )
 }
 

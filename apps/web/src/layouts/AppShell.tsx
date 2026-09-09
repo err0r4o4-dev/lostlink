@@ -3,6 +3,7 @@ import {
   CircleHelp,
   Clock3,
   Home,
+  Languages,
   MapPin,
   PackagePlus,
   Search,
@@ -15,6 +16,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { BrandMark } from '../components/brand-mark'
 import { Badge, GlassSurface } from '../components/ui'
+import { Localize, useLanguage } from '../i18n/language'
 
 interface NavigationItem {
   icon: LucideIcon
@@ -43,7 +45,7 @@ const mobileNavigation: NavigationItem[] = [
 ]
 
 function NavigationLinks({ compact = false, items = desktopNavigation }: { compact?: boolean; items?: NavigationItem[] }) {
-  return items.map(({ to, icon: Icon, label }) => (
+  return <Localize>{items.map(({ to, icon: Icon, label }) => (
     <NavLink
       key={to}
       to={to}
@@ -57,16 +59,35 @@ function NavigationLinks({ compact = false, items = desktopNavigation }: { compa
       <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
       <span>{label}</span>
     </NavLink>
-  ))
+  ))}</Localize>
 }
 
 function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
-  return <Link to={to} aria-label={label} className="ui-transition flex size-11 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"><Icon aria-hidden="true" className="size-5" /></Link>
+  return <Localize><Link to={to} aria-label={label} className="ui-transition flex size-11 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"><Icon aria-hidden="true" className="size-5" /></Link></Localize>
+}
+
+function LanguageToggle() {
+  const { language, toggleLanguage } = useLanguage()
+  const nextLanguage = language === 'en' ? 'TH' : 'EN'
+  const label = language === 'en' ? 'เปลี่ยนภาษาเป็นไทย' : 'Switch language to English'
+
+  return (
+    <button
+      type="button"
+      onClick={toggleLanguage}
+      aria-label={label}
+      title={label}
+      className="ui-transition flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-control px-2 text-text-secondary hover:bg-brand-soft hover:text-brand"
+    >
+      <Languages aria-hidden="true" className="size-4" />
+      <span aria-hidden="true" className="text-label font-bold">{nextLanguage}</span>
+    </button>
+  )
 }
 
 export function AppShell() {
   return (
-    <div className="app-backdrop min-h-screen">
+    <Localize><div className="app-backdrop min-h-screen">
       <a href="#main-content" className="fixed left-4 top-4 z-toast -translate-y-24 rounded-control bg-brand px-4 py-3 font-semibold text-on-brand focus-visible:translate-y-0">Skip to content</a>
       <div className="app-shell-grid min-h-screen lg:grid">
         <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-border bg-surface/90 px-6 py-6 lg:flex">
@@ -83,8 +104,10 @@ export function AppShell() {
               <div className="lg:hidden"><BrandMark compact /></div>
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
               <nav aria-label="Primary" className="hidden items-center gap-1 md:flex lg:hidden"><NavigationLinks compact items={tabletNavigation} /></nav>
-              <div className="hidden items-center gap-1 md:flex"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /><HeaderAction to="/profile" icon={UserRound} label="Profile" /></div>
-              <Badge className="md:hidden">Preview</Badge>
+              <div className="flex items-center gap-1">
+                <div className="hidden items-center gap-1 md:flex"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /><LanguageToggle /><HeaderAction to="/profile" icon={UserRound} label="Profile" /></div>
+                <div className="flex items-center gap-1 md:hidden"><LanguageToggle /><Badge>Preview</Badge></div>
+              </div>
             </header>
           </GlassSurface>
           <Outlet />
@@ -93,6 +116,6 @@ export function AppShell() {
       <GlassSurface className="safe-area-bottom fixed inset-x-3 bottom-2 z-navigation rounded-feature shadow-floating md:hidden">
         <nav aria-label="Mobile primary" className="flex min-h-(--layout-mobile-nav) items-center px-2"><NavigationLinks compact items={mobileNavigation} /></nav>
       </GlassSurface>
-    </div>
+    </div></Localize>
   )
 }

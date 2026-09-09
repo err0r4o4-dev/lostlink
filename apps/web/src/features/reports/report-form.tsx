@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { FileUpload } from '../../components/file-upload'
 import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, Textarea } from '../../components/ui'
+import { Localize } from '../../i18n/language'
 
 const reportSchema = z.object({
   itemName: z.string().trim().min(2, 'Enter a clear item name.').max(100, 'Keep the item name under 100 characters.'),
@@ -44,7 +45,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
     ]
 
     return (
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <Localize><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Card className="p-5 md:p-7">
           <div className="flex items-center gap-3"><Eye aria-hidden="true" className="size-6 text-brand" /><h2 className="text-section font-semibold">Review your report</h2></div>
           <dl className="mt-6 divide-y divide-border">
@@ -64,12 +65,12 @@ export function ReportForm({ reportType }: ReportFormProps) {
           <IntegrationNotice announce capability={`${reportType === 'lost' ? 'Lost' : 'Found'} report submission`} />
           <Notice title="Your draft stays in this browser view" tone="warning">Nothing has been stored or sent. Copy any important details before leaving this page.</Notice>
         </div>
-      </div>
+      </div></Localize>
     )
   }
 
   return (
-    <form onSubmit={(event) => void handleSubmit(setReviewValues)(event)} noValidate className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <Localize><form onSubmit={(event) => void handleSubmit(setReviewValues)(event)} noValidate className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="space-y-6 p-5 md:p-7">
         <div>
           <h2 className="text-section font-semibold">Item information</h2>
@@ -108,6 +109,6 @@ export function ReportForm({ reportType }: ReportFormProps) {
         <Notice title="Privacy boundary"><ShieldCheck aria-hidden="true" className="mr-1 inline size-4" />Public discovery details and private ownership evidence remain separate.</Notice>
         <IntegrationNotice capability={`${reportType === 'lost' ? 'Lost' : 'Found'} report creation and image upload`} />
       </aside>
-    </form>
+    </form></Localize>
   )
 }
