@@ -3,7 +3,6 @@ import {
   CircleHelp,
   Clock3,
   Home,
-  Languages,
   MapPin,
   PackagePlus,
   Search,
@@ -76,14 +75,13 @@ function LanguageToggle() {
       onClick={toggleLanguage}
       aria-label={label}
       title={label}
-      className="ui-transition flex min-h-11 items-center justify-center gap-1 rounded-control border border-border bg-surface p-1 text-text-secondary shadow-card hover:border-brand"
+      className="ui-transition flex size-11 items-center justify-center gap-1 rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"
     >
-      <Languages aria-hidden="true" className="mx-1 size-4 shrink-0" />
       {(['th', 'en'] as const).map((option) => (
         <span
           key={option}
           aria-hidden="true"
-          className={`ui-transition flex min-h-8 min-w-8 items-center justify-center rounded-small px-2 text-label font-bold ${language === option ? 'bg-brand text-on-brand' : 'text-text-secondary'}`}
+          className={`ui-transition text-label ${language === option ? 'font-bold text-brand' : 'font-medium text-text-tertiary'}`}
         >
           {option.toUpperCase()}
         </span>

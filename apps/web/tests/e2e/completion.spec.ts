@@ -108,7 +108,12 @@ test('switches between Thai and English next to the notification action', async 
   await expect(thaiLanguageAction).toBeVisible()
   await expect(thaiLanguageAction).toContainText('TH')
   await expect(thaiLanguageAction).toContainText('EN')
+  await expect(thaiLanguageAction.locator('svg')).toHaveCount(0)
   await expect(thaiLanguageAction.locator('xpath=following-sibling::*[1]')).toHaveAttribute('aria-label', 'Notifications')
+  const languageBox = await thaiLanguageAction.boundingBox()
+  const notificationBox = await notificationAction.boundingBox()
+  expect(languageBox?.width).toBe(notificationBox?.width)
+  expect(languageBox?.height).toBe(notificationBox?.height)
 
   await thaiLanguageAction.click()
   await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
