@@ -1,4 +1,5 @@
-# Admin
+# Staff and administration
 
-Reserved for FE-07. Staff/admin behavior is not implemented during bootstrap.
+The staff dashboard and queue presentation live in `src/pages/StaffPages.tsx` and are available under `/staff`.
 
+These screens are frontend previews only. The Go API still needs to provide authenticated staff sessions, centralized RBAC, queue contracts, and authorized actions before any operational staff behavior can be enabled.

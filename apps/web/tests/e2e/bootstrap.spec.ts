@@ -17,8 +17,8 @@ test('shows the bootstrap trust boundary and planned states', async ({ page }) =
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Lost items deserve')
   await expect(page.getByText('Similarity assists discovery')).toBeVisible()
   await expect(page.getByText('Verification stays private')).toBeVisible()
-  await expect(page.getByRole('searchbox', { name: 'Search LostLink' })).toBeDisabled()
-  await expect(page.getByRole('button', { name: /Report a lost item/ })).toBeDisabled()
+  await expect(page.getByRole('link', { name: /Report a lost item/ })).toHaveAttribute('href', '/report/lost')
+  await expect(page.getByRole('link', { name: /Open search/ })).toHaveAttribute('href', '/search')
 })
 
 test('keeps the shell responsive without horizontal page overflow', async ({ page }) => {
@@ -69,7 +69,7 @@ test('uses local production fonts and touch-sized mobile navigation', async ({ p
   expect(fontFamily).toContain('Noto Sans Thai Variable')
 
   const mobileLinks = page.getByRole('navigation', { name: 'Mobile primary' }).getByRole('link')
-  await expect(mobileLinks).toHaveCount(3)
+  await expect(mobileLinks).toHaveCount(5)
   for (const link of await mobileLinks.all()) {
     const box = await link.boundingBox()
     expect(box?.height).toBeGreaterThanOrEqual(44)

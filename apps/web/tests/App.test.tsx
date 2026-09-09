@@ -14,12 +14,12 @@ describe('App', () => {
     expect(screen.getByText(/humans make the decision/i)).toBeInTheDocument()
   })
 
-  it('marks unavailable workflows as unavailable instead of inventing behavior', () => {
+  it('links to complete frontend workflows without inventing server results', () => {
     render(<App />)
 
-    expect(screen.getByRole('searchbox', { name: /search lostlink/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /report a lost item/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /report a found item/i })).toBeDisabled()
+    expect(screen.getByRole('link', { name: /report a lost item/i })).toHaveAttribute('href', '/report/lost')
+    expect(screen.getByRole('link', { name: /report a found item/i })).toHaveAttribute('href', '/report/found')
+    expect(screen.getByRole('link', { name: /open search/i })).toHaveAttribute('href', '/search')
     expect(screen.getByText(/no public items yet/i)).toBeInTheDocument()
   })
 
@@ -28,6 +28,6 @@ describe('App', () => {
 
     expect(screen.getByRole('link', { name: /skip to content/i })).toHaveAttribute('href', '#main-content')
     expect(screen.getAllByRole('navigation').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByRole('link', { name: 'Safety' }).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByRole('link', { name: 'Search' }).length).toBeGreaterThanOrEqual(2)
   })
 })

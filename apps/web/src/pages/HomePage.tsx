@@ -8,8 +8,10 @@ import {
   SearchCheck,
   ShieldCheck,
 } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 
-import { Badge, Button, Card, EmptyState, SearchField } from '../components/ui'
+import { Badge, Card, EmptyState, SearchField, buttonVariants } from '../components/ui'
 
 const principles = [
   {
@@ -43,15 +45,26 @@ const plannedEntries = [
 ]
 
 export function HomePage() {
+  const mainRef = useRef<HTMLElement>(null)
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.key !== 'default') {
+      mainRef.current?.focus({ preventScroll: true })
+    }
+  }, [location.key])
+
   return (
     <main
+      ref={mainRef}
       id="main-content"
-      className="mobile-content-safe mx-auto max-w-content px-5 py-10 md:px-7 md:py-12 lg:px-8 xl:px-10 xl:py-16"
+      tabIndex={-1}
+      className="mobile-content-safe mx-auto max-w-content px-5 py-10 focus:outline-none md:px-7 md:py-12 lg:px-8 xl:px-10 xl:py-16"
     >
       <section id="home" aria-labelledby="home-title" className="grid items-stretch gap-6 xl:grid-cols-5 xl:gap-8">
         <div className="flex flex-col justify-center xl:col-span-3">
           <Badge variant="brand" className="mb-5 w-fit">
-            LostLink foundation
+            LostLink frontend
           </Badge>
           <h1 id="home-title" className="max-w-3xl text-page-mobile font-semibold tracking-tight text-balance text-text-primary md:text-page xl:text-display">
             Lost items deserve a clear path home.
@@ -61,15 +74,15 @@ export function HomePage() {
             staff review, and return.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button disabled>
+            <Link to="/report/lost" className={buttonVariants({ variant: 'primary' })}>
               Report a lost item
               <ArrowRight aria-hidden="true" className="size-4" />
-            </Button>
-            <Button variant="secondary" disabled>
+            </Link>
+            <Link to="/report/found" className={buttonVariants({ variant: 'secondary' })}>
               Report a found item
-            </Button>
+            </Link>
           </div>
-          <p className="mt-3 text-caption text-text-secondary-strong">Reporting is not enabled in this foundation build.</p>
+          <p className="mt-3 text-caption text-text-secondary-strong">Build a complete frontend draft, then review the pending server integration.</p>
         </div>
 
         <Card elevated className="relative overflow-hidden p-6 md:p-8 xl:col-span-2">
@@ -97,18 +110,15 @@ export function HomePage() {
               Search and report
             </h2>
           </div>
-          <Badge>Planned workflow</Badge>
+          <Badge>Frontend ready</Badge>
         </div>
 
         <Card className="p-5 md:p-6">
-          <SearchField
-            label="Search LostLink"
-            placeholder="Search by item, category, or campus area"
-            disabled
-          />
+          <SearchField label="Search LostLink" placeholder="Search by item, category, or campus area" readOnly />
           <p className="mt-3 text-caption text-text-secondary">
-            Search will become available when report and discovery features are implemented.
+            Open the complete search interface to filter public-safe report attributes.
           </p>
+          <Link to="/search" className={`${buttonVariants({ variant: 'secondary' })} mt-4`}>Open search</Link>
         </Card>
 
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
@@ -120,9 +130,7 @@ export function HomePage() {
             <p className="mt-2 text-caption text-text-secondary">
               A guided report will collect only the details needed to help discovery.
             </p>
-            <Button variant="ghost" className="mt-5 px-0" disabled>
-              Coming soon
-            </Button>
+            <Link to="/report/lost" className={`${buttonVariants({ variant: 'ghost' })} mt-5 px-0`}>Create lost report</Link>
           </Card>
 
           <Card className="group p-5 md:p-6">
@@ -133,9 +141,7 @@ export function HomePage() {
             <p className="mt-2 text-caption text-text-secondary">
               Found-item details will support safe matching without exposing private evidence.
             </p>
-            <Button variant="ghost" className="mt-5 px-0" disabled>
-              Coming soon
-            </Button>
+            <Link to="/report/found" className={`${buttonVariants({ variant: 'ghost' })} mt-5 px-0`}>Create found report</Link>
           </Card>
         </div>
       </section>
