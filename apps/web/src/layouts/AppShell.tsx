@@ -81,7 +81,7 @@ function LanguageToggle() {
         <span
           key={option}
           aria-hidden="true"
-          className={`ui-transition flex min-h-8 min-w-8 items-center justify-center rounded-small px-2 text-label font-bold ${language === option ? 'bg-brand text-on-brand' : 'bg-brand-soft text-brand'}`}
+          className={`ui-transition flex min-h-8 min-w-8 items-center justify-center rounded-small px-2 text-label font-bold ${language === option ? 'bg-brand text-on-brand' : ''}`}
         >
           {option.toUpperCase()}
         </span>

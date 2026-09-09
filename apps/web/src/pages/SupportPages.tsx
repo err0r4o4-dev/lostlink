@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react'
 
 import { Button, Card, EmptyState, Input, IntegrationNotice, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
 import { RouteCard } from '../components/route-card'
+import { useAuth } from '../features/auth/auth-state'
 
 const processGuide = [
   ['Report submitted', 'The Go API will create and validate an authoritative report record.'],
@@ -34,16 +35,17 @@ export function NotificationsPage() {
 }
 
 export function ProfilePage() {
+  const { logout, user } = useAuth()
   return (
     <PageContainer>
-      <PageHeader eyebrow="Account" title="Profile and preferences" description="Account identity and settings remain unavailable until the authentication contract is implemented." />
+      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." actions={<Button onClick={() => void logout()} variant="secondary">Sign out</Button>} />
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2><p className="mt-2 text-caption text-text-secondary">No authenticated account fields are available.</p><div className="mt-5"><StatusBadge>Signed out</StatusBadge></div></Card>
+        <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2><p className="mt-2 break-all text-caption text-text-secondary">{user?.identifier}</p><div className="mt-5"><StatusBadge>{user?.role ?? 'user'}</StatusBadge></div></Card>
         <Card className="p-5 md:p-6"><Bell aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Notification settings</h2><p className="mt-2 text-caption text-text-secondary">Preferences will appear only when their server-side purpose and defaults are approved.</p></Card>
         <Card className="p-5 md:p-6"><ShieldCheck aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Privacy controls</h2><p className="mt-2 text-caption text-text-secondary">Retention, deletion, session, and data-access controls require authoritative backend policy.</p></Card>
       </div>
-      <section className="mt-8" aria-labelledby="profile-destinations"><h2 id="profile-destinations" className="mb-5 text-section font-semibold">More destinations</h2><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><RouteCard to="/notifications" icon={Bell} title="Notifications" description="Review account-related updates when authentication is available." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Explore similarity-assisted discovery without treating it as proof." /><RouteCard to="/verification" icon={FileCheck2} title="Verification guide" description="Understand how private evidence and human review stay separate." /><RouteCard to="/help" icon={CircleHelp} title="Help and safety" description="Read guidance grounded in the approved product architecture." /></div></section>
-      <div className="mt-5"><IntegrationNotice capability="Authenticated profile, preferences, history, and privacy actions" /></div>
+      <section className="mt-8" aria-labelledby="profile-destinations"><h2 id="profile-destinations" className="mb-5 text-section font-semibold">More destinations</h2><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><RouteCard to="/notifications" icon={Bell} title="Notifications" description="Review account-related updates when the notification service is available." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Explore similarity-assisted discovery without treating it as proof." /><RouteCard to="/verification" icon={FileCheck2} title="Verification guide" description="Understand how private evidence and human review stay separate." /><RouteCard to="/help" icon={CircleHelp} title="Help and safety" description="Read guidance grounded in the approved product architecture." /></div></section>
+      <div className="mt-5"><IntegrationNotice capability="Profile preferences, account history, and privacy actions" /></div>
     </PageContainer>
   )
 }

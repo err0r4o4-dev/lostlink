@@ -10,5 +10,7 @@
 - Seeds are deterministic, synthetic, non-sensitive, and safe only for non-production environments.
 - Validate migration up/down on disposable PostgreSQL. Backups and explicit rollback plans are required before destructive production data work.
 
-Bootstrap migration `000001_enable_vector` enables pgvector only; product tables await finalized requirements.
-
+Migration `000001_enable_vector` enables pgvector. Later migrations add users,
+rotating refresh sessions, and public-safe text reports. Private verification
+evidence and image metadata remain deferred until their access, retention,
+deletion, and audit policies are approved.

@@ -67,7 +67,7 @@ func TestOpenAPIDocumentRouteExists(t *testing.T) {
 	if contentType := recorder.Header().Get("Content-Type"); !strings.Contains(contentType, "application/yaml") {
 		t.Fatalf("Content-Type = %q; want application/yaml", contentType)
 	}
-	for _, expected := range []string{"openapi: 3.1.0", "    ## Introduction", "  /health:", "    HealthResponse:"} {
+	for _, expected := range []string{"openapi: 3.1.0", "    # Introduction", "  /health:", "  /v1/auth/login:", "    HealthResponse:", "    BearerAuth:"} {
 		if !strings.Contains(recorder.Body.String(), expected) {
 			t.Fatalf("OpenAPI document does not contain %q", expected)
 		}

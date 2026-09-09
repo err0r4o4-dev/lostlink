@@ -3,15 +3,17 @@ import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, UserPlus }
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { BrandMark } from '../components/brand-mark'
 import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, PageContainer, PageHeader } from '../components/ui'
+import { ApiError } from '../api/client'
+import { useAuth } from '../features/auth/auth-state'
 
-const identifierSchema = z.object({ identifier: z.string().trim().min(1, 'Enter your university email or account identifier.') })
+const identifierSchema = z.object({ identifier: z.string().trim().min(3, 'Use at least 3 characters.').max(254, 'Keep the identifier under 255 characters.') })
 const loginSchema = identifierSchema.extend({ password: z.string().min(1, 'Enter your password.') })
-const registerSchema = loginSchema.extend({ confirmPassword: z.string().min(1, 'Confirm your password.') }).refine((values) => values.password === values.confirmPassword, { message: 'Passwords do not match.', path: ['confirmPassword'] })
+const registerSchema = identifierSchema.extend({ password: z.string().min(12, 'Use at least 12 characters.').max(128, 'Keep the password under 129 characters.'), confirmPassword: z.string().min(1, 'Confirm your password.') }).refine((values) => values.password === values.confirmPassword, { message: 'Passwords do not match.', path: ['confirmPassword'] })
 const resetSchema = z.object({ token: z.string().trim().min(1, 'Enter the recovery token.'), password: z.string().min(1, 'Enter a new password.'), confirmPassword: z.string().min(1, 'Confirm the new password.') }).refine((values) => values.password === values.confirmPassword, { message: 'Passwords do not match.', path: ['confirmPassword'] })
 
 function AuthLayout({ children, description, title }: { children: ReactNode; description: string; title: string }) {
@@ -24,17 +26,30 @@ function AuthLayout({ children, description, title }: { children: ReactNode; des
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [attempted, setAttempted] = useState(false)
-  const { formState: { errors }, handleSubmit, register } = useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema) })
+  const [serverError, setServerError] = useState<string>()
+  const { authenticate } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { formState: { errors, isSubmitting }, handleSubmit, register } = useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema) })
+  const submit = handleSubmit(async (values) => {
+    setServerError(undefined)
+    try {
+      await authenticate('login', values)
+      const requested = (location.state as { from?: string } | null)?.from
+      void navigate(requested?.startsWith('/') ? requested : '/profile', { replace: true })
+    } catch (error) {
+      setServerError(error instanceof ApiError ? error.message : 'Sign in is temporarily unavailable.')
+    }
+  })
   return (
     <AuthLayout title="Sign in to LostLink" description="Authentication is required before private reports, claims, tracking, or staff tools can be accessed.">
-      <form className="space-y-5" noValidate onSubmit={(event) => void handleSubmit(() => setAttempted(true))(event)}>
+      <form className="space-y-5" noValidate onSubmit={(event) => void submit(event)}>
         <Input label="University email or account identifier" autoComplete="username" required error={errors.identifier?.message} {...register('identifier')} />
         <Input label="Password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required error={errors.password?.message} {...register('password')} />
         <Checkbox label="Show password" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} />
-        <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/forgot-password" className="min-h-11 py-3 text-caption font-semibold text-brand">Forgot password?</Link><Button type="submit">Sign in <ArrowRight aria-hidden="true" className="size-4" /></Button></div>
+        {serverError && <Notice announce title="Sign in failed" tone="error">{serverError}</Notice>}
+        <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/forgot-password" className="min-h-11 py-3 text-caption font-semibold text-brand">Forgot password?</Link><Button disabled={isSubmitting} type="submit">{isSubmitting ? 'Signing in…' : 'Sign in'} <ArrowRight aria-hidden="true" className="size-4" /></Button></div>
       </form>
-      {attempted && <div className="mt-5"><IntegrationNotice announce capability="Login, secure session cookies, token rotation, and authorization" /></div>}
       <p className="mt-6 text-center text-caption text-text-secondary">Need an account? <Link className="font-semibold text-brand" to="/register">Create one</Link></p>
     </AuthLayout>
   )
@@ -42,18 +57,29 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [attempted, setAttempted] = useState(false)
-  const { formState: { errors }, handleSubmit, register } = useForm<z.infer<typeof registerSchema>>({ resolver: zodResolver(registerSchema) })
+  const [serverError, setServerError] = useState<string>()
+  const { authenticate } = useAuth()
+  const navigate = useNavigate()
+  const { formState: { errors, isSubmitting }, handleSubmit, register } = useForm<z.infer<typeof registerSchema>>({ resolver: zodResolver(registerSchema) })
+  const submit = handleSubmit(async (values) => {
+    setServerError(undefined)
+    try {
+      await authenticate('register', { identifier: values.identifier, password: values.password })
+      void navigate('/onboarding', { replace: true })
+    } catch (error) {
+      setServerError(error instanceof ApiError ? error.message : 'Registration is temporarily unavailable.')
+    }
+  })
   return (
-    <AuthLayout title="Create your account" description="Only fields present in the planned authentication boundary are requested. Additional identity fields require an approved API contract.">
-      <form className="space-y-5" noValidate onSubmit={(event) => void handleSubmit(() => setAttempted(true))(event)}>
+    <AuthLayout title="Create your account" description="Create a basic LostLink account. Additional identity fields require a separately approved API contract.">
+      <form className="space-y-5" noValidate onSubmit={(event) => void submit(event)}>
         <Input label="University email or account identifier" autoComplete="username" required error={errors.identifier?.message} {...register('identifier')} />
-        <Input label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required description="Password requirements will be enforced by the future authentication contract." error={errors.password?.message} {...register('password')} />
+        <Input label="Password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required description="Use 12–128 characters." error={errors.password?.message} {...register('password')} />
         <Input label="Confirm password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required error={errors.confirmPassword?.message} {...register('confirmPassword')} />
         <Checkbox label="Show passwords" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} />
-        <Button className="w-full" type="submit"><UserPlus aria-hidden="true" className="size-4" />Review registration</Button>
+        {serverError && <Notice announce title="Registration failed" tone="error">{serverError}</Notice>}
+        <Button className="w-full" disabled={isSubmitting} type="submit"><UserPlus aria-hidden="true" className="size-4" />{isSubmitting ? 'Creating account…' : 'Create account'}</Button>
       </form>
-      {attempted && <div className="mt-5"><IntegrationNotice announce capability="Account registration and approved consent capture" /></div>}
       <p className="mt-6 text-center text-caption text-text-secondary">Already registered? <Link className="font-semibold text-brand" to="/login">Sign in</Link></p>
     </AuthLayout>
   )

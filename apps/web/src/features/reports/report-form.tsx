@@ -7,6 +7,9 @@ import { z } from 'zod'
 import { FileUpload } from '../../components/file-upload'
 import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, Textarea } from '../../components/ui'
 import { Localize } from '../../i18n/language'
+import { ApiError } from '../../api/client'
+import { useAuth } from '../auth/auth-state'
+import { createReport, type ReportRecord } from './report-api'
 
 const reportSchema = z.object({
   itemName: z.string().trim().min(2, 'Enter a clear item name.').max(100, 'Keep the item name under 100 characters.'),
@@ -27,11 +30,42 @@ interface ReportFormProps {
 
 export function ReportForm({ reportType }: ReportFormProps) {
   const [reviewValues, setReviewValues] = useState<ReportValues>()
+  const [created, setCreated] = useState<ReportRecord>()
+  const [submitError, setSubmitError] = useState<string>()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  const { accessToken } = useAuth()
   const { formState: { errors }, handleSubmit, register } = useForm<ReportValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: { approximateTime: '', identifyingDetails: '' },
   })
   const eventVerb = reportType === 'lost' ? 'lost' : 'found'
+
+  async function submitReport() {
+    if (!reviewValues || !accessToken) return
+    setIsSubmitting(true)
+    setSubmitError(undefined)
+    try {
+      const response = await createReport({
+        report_type: reportType,
+        item_name: reviewValues.itemName,
+        category: reviewValues.category,
+        public_description: reviewValues.description,
+        event_date: reviewValues.eventDate,
+        approximate_time: reviewValues.approximateTime,
+        approximate_location: reviewValues.location,
+      }, accessToken, idempotencyKey)
+      setCreated(response.report)
+    } catch (error) {
+      setSubmitError(error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (created) {
+    return <Notice announce title="Report submitted" tone="success">Your {created.report_type} report reference is <span className="font-semibold">{created.id}</span>. Private identifying details and the local image preview were not uploaded.</Notice>
+  }
 
   if (reviewValues) {
     const rows = [
@@ -58,12 +92,12 @@ export function ReportForm({ reportType }: ReportFormProps) {
           </dl>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button variant="secondary" onClick={() => setReviewValues(undefined)}><ArrowLeft aria-hidden="true" className="size-4" />Edit report</Button>
-            <Button disabled>Submission unavailable</Button>
+            <Button disabled={isSubmitting || !accessToken} onClick={() => void submitReport()}>{isSubmitting ? 'Submitting…' : 'Submit report'}</Button>
           </div>
+          {submitError && <div className="mt-5"><Notice announce title="Submission failed" tone="error">{submitError}</Notice></div>}
         </Card>
         <div className="space-y-4">
-          <IntegrationNotice announce capability={`${reportType === 'lost' ? 'Lost' : 'Found'} report submission`} />
-          <Notice title="Your draft stays in this browser view" tone="warning">Nothing has been stored or sent. Copy any important details before leaving this page.</Notice>
+          <Notice title="Private fields stay local" tone="warning">Private identifying details and the image preview are not part of the report API and will not be sent.</Notice>
         </div>
       </div></Localize>
     )
@@ -107,7 +141,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
       </Card>
       <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
         <Notice title="Privacy boundary"><ShieldCheck aria-hidden="true" className="mr-1 inline size-4" />Public discovery details and private ownership evidence remain separate.</Notice>
-        <IntegrationNotice capability={`${reportType === 'lost' ? 'Lost' : 'Found'} report creation and image upload`} />
+        <IntegrationNotice capability="Private image upload and identifying-evidence storage" />
       </aside>
     </form></Localize>
   )

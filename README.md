@@ -57,7 +57,7 @@ LostLink is a privacy-conscious university Lost & Found platform designed around
 
 The repository is a monorepo containing a React web client, a modular Go API, an internal Python AI service, PostgreSQL with pgvector, and S3-compatible object storage. The Go API is the only public application backend. The browser must not connect directly to PostgreSQL, storage credentials, or the AI service.
 
-This repository currently provides a runnable foundation. Product workflows and authentication remain planned rather than implemented.
+This repository provides a runnable foundation plus the first implemented product boundary: local account authentication and role-aware route protection. Lost/found workflows and later stages remain planned.
 
 ## Current foundation scope
 
@@ -66,9 +66,11 @@ Implemented:
 - React application shell with a project-foundation landing page
 - Shared React Query provider, React Router setup, and typed HTTP client foundation
 - Go API process health endpoint and Scalar API Reference
+- Account registration/login, Argon2id password hashing, short-lived JWT access tokens, rotating refresh sessions, logout, current-user lookup, and centralized role middleware
+- Idempotent authenticated lost/found report creation plus public-safe search and detail responses
 - Go configuration, PostgreSQL connection, readable privacy-minimized request logs, structured lifecycle logs, and graceful shutdown foundations
 - Internal FastAPI process health endpoint with public OpenAPI pages disabled
-- Initial reversible migration that enables the PostgreSQL `vector` extension
+- Reversible migrations for the PostgreSQL `vector` extension, users, and refresh sessions
 - Dockerfiles, Docker Compose, Caddy routing, health checks, private backend networking, and persistent development volumes
 - Web, Go, and Python unit tests plus a Playwright bootstrap smoke test
 - GitHub Actions quality gates, pull-request policy checks, Dependabot, and CodeQL scanning
@@ -76,8 +78,6 @@ Implemented:
 
 Not implemented yet:
 
-- Authentication, JWT sessions, or role-based access control
-- Lost and found report creation or search
 - Image upload and private object access workflows
 - Embedding generation, pgvector candidate retrieval, multimodal ranking, or evaluation
 - Claims, ownership verification, staff review, tracking, notifications, pickup, return, or closure
@@ -336,7 +336,7 @@ The authoritative local template is [`.env.example`](.env.example).
 | --- | --- | --- |
 | `APP_ENV` | Go API runtime environment | Used; defaults to `development` |
 | `PUBLIC_PORT` | Caddy host port | Used; defaults to `8088` |
-| `WEB_ORIGIN` | Intended browser origin | Reserved for future origin policy |
+| `WEB_ORIGIN` | Exact trusted browser origin for authentication mutations | Used by the Go API |
 | `API_PORT` | Go API listen port | Used by direct API startup; Compose sets `8080` |
 | `AI_PORT` | Intended AI-service port | Template value; Compose currently sets `8000` |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL bootstrap configuration | Used by Compose |
@@ -344,7 +344,7 @@ The authoritative local template is [`.env.example`](.env.example).
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Local MinIO administrator credentials | Used by Compose |
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET` | Future Go storage target | Wired into Compose; product storage is not implemented |
 | `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_USE_SSL` | Future Go storage access | Wired into Compose; product storage is not implemented |
-| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `JWT_SIGNING_KEY` | Reserved authentication contract | Authentication is not implemented |
+| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `JWT_SIGNING_KEY` | Access/refresh session configuration | Used; replace the local signing-key placeholder before shared or production use |
 
 Never commit `.env`, real credentials, tokens, keys, or production connection strings.
 
@@ -355,6 +355,14 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 | Method and URL | Purpose |
 | --- | --- |
 | `GET http://localhost:8088/api/health` | API process liveness |
+| `POST http://localhost:8088/api/v1/auth/register` | Create an account and session |
+| `POST http://localhost:8088/api/v1/auth/login` | Start a session |
+| `POST http://localhost:8088/api/v1/auth/refresh` | Rotate the HttpOnly refresh cookie |
+| `POST http://localhost:8088/api/v1/auth/logout` | Revoke the current refresh session |
+| `GET http://localhost:8088/api/v1/auth/me` | Read the bearer-authenticated account |
+| `GET/POST http://localhost:8088/api/v1/reports` | Search public-safe reports / create an authenticated report |
+| `GET http://localhost:8088/api/v1/reports/{reportId}` | Read one active public-safe report |
+| `GET http://localhost:8088/api/v1/reports/mine` | List the authenticated account's reports |
 | `GET http://localhost:8088/docs` | Public Scalar API Reference |
 | `GET http://localhost:8088/docs/swagger.yaml` | Canonical OpenAPI 3.1 document |
 | `GET http://localhost:8088/api/swagger/index.html` | Legacy URL; redirects to `/docs` |
@@ -513,9 +521,10 @@ Report suspected vulnerabilities privately according to [SECURITY.md](SECURITY.m
 
 ## Known limitations
 
-- The application currently exposes only a foundation landing page and health/documentation routes.
-- Authentication, RBAC, reports, matches, claims, verification, tracking, notifications, and administration are not implemented.
-- PostgreSQL contains only the pgvector extension migration; product schemas and queries remain pending.
+- Authentication and baseline role middleware are implemented; password recovery, audit events, and production key rotation remain pending.
+- Text-based lost/found reports and discovery are implemented; report withdrawal and lifecycle transitions remain pending.
+- Images, matches, claims, verification, tracking, notifications, and administration are not implemented.
+- PostgreSQL currently contains pgvector, account, refresh-session, and report schema; later product schemas and queries remain pending.
 - MinIO is present in Compose, but upload, bucket provisioning, signed URL, retention, and deletion workflows are not implemented.
 - The AI service exposes only internal health and does not load models or generate similarity results.
 - No matching evaluation dataset, metrics baseline, thresholds, or production model artifacts exist yet.
@@ -524,9 +533,9 @@ Report suspected vulnerabilities privately according to [SECURITY.md](SECURITY.m
 
 ## Roadmap
 
-1. Authentication and role-based authorization
-2. Lost report workflow
-3. Found report workflow
+1. Lost report workflow
+2. Found report workflow
+3. Image storage and authorized access
 4. AI-assisted matching and evaluation
 5. Claim and ownership verification
 6. Tracking and notifications
@@ -549,9 +558,9 @@ The Go API owns authentication, authorization, validation, workflow state, timeo
 
 They are backend dependencies and do not need public host access. The default Compose topology publishes only Caddy on `127.0.0.1` and keeps backend traffic on private Docker networks.
 
-### Why are JWT variables present when authentication is unavailable?
+### Why must the JWT signing key be replaced?
 
-They reserve the intended future configuration contract. Their presence does not mean login, refresh, logout, or RBAC behavior has been implemented.
+The checked-in value is only a local placeholder. Shared and production environments require a secret generated and managed outside Git; the current API rejects the documented placeholder when `APP_ENV=production`.
 
 ### Why is the AI service OpenAPI schema disabled?
 

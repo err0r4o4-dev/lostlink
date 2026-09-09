@@ -1,20 +1,33 @@
 import { ArrowLeftRight, Filter, Image as ImageIcon, MapPin, PackageSearch, Search, ShieldCheck, Sparkles } from 'lucide-react'
 import { FormEvent, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 
 import { RouteCard } from '../components/route-card'
-import { Badge, Button, Card, EmptyState, Input, IntegrationNotice, Notice, PageContainer, PageHeader, SearchField, Select, buttonVariants } from '../components/ui'
+import { ItemCard } from '../components/item-card'
+import { Badge, Button, Card, EmptyState, ErrorState, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, SearchField, Select, StatusBadge, buttonVariants } from '../components/ui'
 import { Localize } from '../i18n/language'
+import { getReport, searchReports } from '../features/reports/report-api'
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
-  const [searched, setSearched] = useState(searchParams.has('q'))
+  const [category, setCategory] = useState(searchParams.get('category') ?? '')
+  const [reportType, setReportType] = useState(searchParams.get('type') ?? 'all')
+  const [searched, setSearched] = useState(searchParams.toString() !== '')
+  const activeType = searchParams.get('type')
+  const filteredType: 'lost' | 'found' | undefined = activeType === 'lost' || activeType === 'found' ? activeType : undefined
+  const filters = { q: searchParams.get('q') ?? undefined, category: searchParams.get('category') ?? undefined, type: filteredType }
+  const results = useQuery({ queryKey: ['reports', filters], queryFn: () => searchReports(filters), enabled: searched })
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSearched(true)
-    setSearchParams(query.trim() ? { q: query.trim() } : {})
+    const next: Record<string, string> = {}
+    if (query.trim()) next.q = query.trim()
+    if (category.trim()) next.category = category.trim()
+    if (reportType === 'lost' || reportType === 'found') next.type = reportType
+    setSearchParams(next)
   }
 
   return (
@@ -26,46 +39,51 @@ export function SearchPage() {
             <div className="flex-1"><SearchField label="Search lost and found reports" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Item, category, or campus area" /></div>
             <Button type="submit"><Search aria-hidden="true" className="size-4" />Search</Button>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Select label="Report type" defaultValue="all"><option value="all">Lost and found</option><option value="lost">Lost only</option><option value="found">Found only</option></Select>
-            <Input label="Category" placeholder="Any category" />
-            <Input label="Approximate location" placeholder="Any campus area" />
-            <Input label="Date" type="date" />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <Select label="Report type" value={reportType} onChange={(event) => setReportType(event.target.value)}><option value="all">Lost and found</option><option value="lost">Lost only</option><option value="found">Found only</option></Select>
+            <Input label="Category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Any category" />
           </div>
         </Card>
       </form>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2"><Filter aria-hidden="true" className="size-5 text-brand" /><h2 className="text-section font-semibold">Results</h2></div>
-        <Badge>{searched ? '0 results' : 'Search not started'}</Badge>
+        <Badge>{results.data ? `${results.data.reports.length} results` : searched ? 'Searching' : 'Search not started'}</Badge>
       </div>
       <div className="mt-5">
-        <EmptyState icon={PackageSearch} title={searched ? 'Search integration pending' : 'Start with an item description'} description={searched ? 'No report data was requested because a public search endpoint does not exist yet.' : 'Search by visible item details, category, date, or an approximate campus area.'} />
+        {!searched && <EmptyState icon={PackageSearch} title="Start with an item description" description="Search by visible item details, category, or an approximate campus area." />}
+        {results.isLoading && <LoadingState label="Searching public reports" />}
+        {results.isError && <ErrorState description="Public reports could not be loaded." onRetry={() => void results.refetch()} />}
+        {results.data?.reports.length === 0 && <EmptyState icon={PackageSearch} title="No reports found" description="Try a broader public-safe description or a different category." />}
+        {results.data && results.data.reports.length > 0 && <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{results.data.reports.map((report) => <ItemCard key={report.id} item={{ id: report.id, reportType: report.report_type, title: report.item_name, category: report.category, location: report.approximate_location, dateLabel: report.event_date }} />)}</div>}
       </div>
-      <div className="mt-5"><IntegrationNotice capability="Lost and found report search, filtering, and pagination" /></div>
     </PageContainer>
   )
 }
 
 export function ItemDetailPage() {
   const { itemId } = useParams()
+  const result = useQuery({ queryKey: ['report', itemId], queryFn: () => getReport(itemId ?? ''), enabled: Boolean(itemId) })
   return (
     <PageContainer>
-      <PageHeader eyebrow="Item details" title="Item information is unavailable" description="This route is ready for a public-safe item DTO, but no item endpoint or authorized image access contract currently exists." />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.5fr)]">
+      <PageHeader eyebrow="Item details" title={result.data?.report.item_name ?? 'Public report'} description="Only public-safe report attributes are shown. Private evidence and reporter identity are excluded." />
+      {result.isLoading && <LoadingState label="Loading report" />}
+      {result.isError && <ErrorState title="Report unavailable" description="This report does not exist, was withdrawn, or could not be loaded." onRetry={() => void result.refetch()} />}
+      {result.data && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.5fr)]">
         <Card className="overflow-hidden">
           <div className="flex min-h-80 items-center justify-center bg-surface-secondary"><ImageIcon aria-hidden="true" className="size-12 text-text-tertiary" /></div>
           <div className="p-5 md:p-7">
-            <Badge>Reference {itemId ?? 'unavailable'}</Badge>
-            <h2 className="mt-5 text-section font-semibold">No public item data loaded</h2>
-            <p className="mt-2 text-caption text-text-secondary">Title, category, description, coarse location, date, and status will appear only when supplied by the Go API.</p>
+            <div className="flex flex-wrap gap-2"><StatusBadge tone={result.data.report.report_type === 'lost' ? 'brand' : 'info'}>{result.data.report.report_type}</StatusBadge><Badge>{result.data.report.category}</Badge></div>
+            <h2 className="mt-5 text-section font-semibold">{result.data.report.item_name}</h2>
+            <p className="mt-2 whitespace-pre-wrap text-caption text-text-secondary">{result.data.report.public_description}</p>
+            <dl className="mt-5 grid gap-4 text-caption sm:grid-cols-2"><div><dt className="font-semibold text-text-secondary">Date</dt><dd className="mt-1">{result.data.report.event_date}{result.data.report.approximate_time ? ` · ${result.data.report.approximate_time}` : ''}</dd></div><div><dt className="font-semibold text-text-secondary">Approximate location</dt><dd className="mt-1">{result.data.report.approximate_location}</dd></div></dl>
           </div>
         </Card>
         <aside className="space-y-4">
           <Notice title="Private by design"><ShieldCheck aria-hidden="true" className="mr-1 inline size-4" />Reporter contact details, ownership answers, receipts, serial secrets, and staff notes are excluded from this surface.</Notice>
-          <IntegrationNotice capability="Item details and authorized image access" />
+          <IntegrationNotice capability="Authorized report image access" />
           <Link className={buttonVariants({ variant: 'secondary' })} to="/search">Back to search</Link>
         </aside>
-      </div>
+      </div>}
     </PageContainer>
   )
 }

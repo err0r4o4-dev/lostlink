@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, ErrorState, IntegrationNotice, LoadingState, N
 import { useApiHealth } from '../features/system/use-api-health'
 
 function StaffBoundaryNotice() {
-  return <Notice title="Staff preview only" tone="warning"><ShieldAlert aria-hidden="true" className="mr-1 inline size-4" />Authentication and centralized Go RBAC are not implemented. This frontend route grants no staff capability.</Notice>
+  return <Notice title="Staff API pending" tone="warning"><ShieldAlert aria-hidden="true" className="mr-1 inline size-4" />This route requires a server-issued staff or admin role. Queue data and staff actions remain unavailable until their authorized APIs and audit records are implemented.</Notice>
 }
 
 export function StaffDashboardPage() {

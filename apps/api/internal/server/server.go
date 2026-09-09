@@ -7,6 +7,8 @@ import (
 	"net/http"
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/gin-gonic/gin"
 	"github.com/watchakorn-18k/scalar-go"
 )
@@ -16,7 +18,18 @@ type HealthResponse struct {
 	Service string `json:"service" example:"api"`
 }
 
-func New(requestLogWriter io.Writer) http.Handler {
+type Options struct {
+	Auth          *auth.Service
+	Reports       *report.Service
+	WebOrigin     string
+	SecureCookies bool
+}
+
+func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
+	var options Options
+	if len(configured) > 0 {
+		options = configured[0]
+	}
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		Formatter: readableRequestLog,
@@ -24,6 +37,12 @@ func New(requestLogWriter io.Writer) http.Handler {
 		SkipPaths: []string{"/health"},
 	}), gin.Recovery())
 	router.GET("/health", health)
+	if options.Auth != nil {
+		auth.RegisterRoutes(router.Group("/v1/auth"), options.Auth, options.WebOrigin, options.SecureCookies)
+		if options.Reports != nil {
+			report.RegisterRoutes(router.Group("/v1/reports"), options.Reports, options.Auth)
+		}
+	}
 	docsHTML, docsErr := scalar.ApiReferenceHTML(&scalar.Options{
 		CDN:         "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.63.0",
 		Layout:      scalar.LayoutModern,

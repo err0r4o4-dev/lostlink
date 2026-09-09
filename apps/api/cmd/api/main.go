@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/database"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/server"
 )
 
@@ -36,9 +38,18 @@ func main() {
 		defer pool.Close()
 	}
 
+	var authService *auth.Service
+	var reportService *report.Service
+	if pool != nil {
+		authService = auth.NewService(auth.NewRepository(pool), auth.NewTokenManager(
+			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSigningKey, cfg.JWTAccessTTL, cfg.RefreshTTL,
+		))
+		reportService = report.NewService(report.NewRepository(pool))
+	}
+
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(os.Stdout),
+		Handler:           server.New(os.Stdout, server.Options{Auth: authService, Reports: reportService, WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production"}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
