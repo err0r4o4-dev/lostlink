@@ -1,0 +1,4 @@
+interface:
+  display_name: "Liquid Glass Web"
+  short_description: "Apply selective readable glass surfaces on the web"
+  default_prompt: "Use $liquid-glass-web to design a selective glass surface for LostLink."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Gin Backend"
+  short_description: "Build LostLink Go and Gin behavior"
+  default_prompt: "Use $go-gin-backend to implement this API task."

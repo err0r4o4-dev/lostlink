@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation"
+  short_description: "Keep LostLink documentation synchronized"
+  default_prompt: "Use $documentation to update project documentation."

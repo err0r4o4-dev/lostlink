@@ -1,0 +1,4 @@
+interface:
+  display_name: "LostLink Project Context"
+  short_description: "Apply LostLink boundaries and architecture"
+  default_prompt: "Use $lostlink-project-context to scope this LostLink change."

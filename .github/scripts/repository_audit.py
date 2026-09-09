@@ -30,11 +30,11 @@ SENSITIVE_VARIABLES = (
     "TOKEN",
 )
 VARIABLE_PATTERN = re.compile(
-    rf"\b(?P<variable>{'|'.join(SENSITIVE_VARIABLES)})\b\s*[:=]\s*(?P<value>[^\r\n]+)",
+    rf"^\s*(?:-\s*)?['\"]?(?P<variable>{'|'.join(SENSITIVE_VARIABLES)})['\"]?\s*[:=]\s*(?P<value>[^\r\n]+)",
     re.IGNORECASE,
 )
 PLACEHOLDER_PATTERN = re.compile(
-    r"^(?:['\"]?['\"]?|example|placeholder|replace[_-]?me|changeme|todo|"
+    r"^(?:['\"]?['\"]?|example|placeholder|replace[_-]?me.*|changeme|todo|"
     r"your[_-].*|<.*>|\$\{.*\}|\$\{\{.*\}\})$",
     re.IGNORECASE,
 )
@@ -58,12 +58,15 @@ SOURCE_SUFFIXES = {
 }
 
 
-def tracked_files() -> list[Path]:
+def repository_files() -> list[Path]:
     command = [
         "git",
         "-c",
         f"safe.directory={ROOT.as_posix()}",
         "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
         "-z",
     ]
     result = subprocess.run(command, check=True, capture_output=True)
@@ -84,6 +87,8 @@ def is_forbidden_sensitive_file(path: Path) -> bool:
 def useful_secret_value(raw_value: str) -> bool:
     value = raw_value.strip().strip("'\" ,")
     if not value or PLACEHOLDER_PATTERN.fullmatch(value):
+        return False
+    if any(marker in value.lower() for marker in ("replace-me", "replace_me", "changeme")):
         return False
     if value.startswith(("process.env.", "os.environ", "getenv(")):
         return False
@@ -179,7 +184,7 @@ def write_summary(report: dict[str, object]) -> None:
         f"- Critical findings: **{report['critical_findings']}**",
         "",
         "The code quality score currently measures repository safety and hygiene. "
-        "Stack-specific checks are added automatically when source manifests exist.",
+        "Stack-specific checks run in dedicated web, API, AI, E2E, and Compose CI jobs.",
     ]
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_path:
@@ -189,7 +194,7 @@ def write_summary(report: dict[str, object]) -> None:
 
 
 def main() -> int:
-    files = tracked_files()
+    files = repository_files()
     findings = inspect_files(files)
     health_score, health_checks = project_health(files)
     critical_findings = sum(len(items) for items in findings.values())

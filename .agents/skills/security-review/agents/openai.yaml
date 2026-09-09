@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Review"
+  short_description: "Review LostLink trust boundaries and privacy"
+  default_prompt: "Use $security-review to assess this security-sensitive change."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python FastAPI AI"
+  short_description: "Build the internal FastAPI AI service"
+  default_prompt: "Use $python-fastapi-ai to implement this AI service task."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Design"
+  short_description: "Design bounded LostLink architecture"
+  default_prompt: "Use $architecture-design to plan this architectural change."

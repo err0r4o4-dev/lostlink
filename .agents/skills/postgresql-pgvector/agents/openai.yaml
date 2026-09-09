@@ -1,0 +1,4 @@
+interface:
+  display_name: "PostgreSQL pgvector"
+  short_description: "Design PostgreSQL and vector persistence"
+  default_prompt: "Use $postgresql-pgvector to design this persistence change."

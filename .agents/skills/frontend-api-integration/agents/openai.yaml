@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend API Integration"
+  short_description: "Connect typed web clients to the API"
+  default_prompt: "Use $frontend-api-integration to connect this frontend flow."

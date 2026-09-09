@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testing Strategy"
+  short_description: "Choose and run risk-based tests"
+  default_prompt: "Use $testing-strategy to test this LostLink change."

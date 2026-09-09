@@ -1,21 +1,48 @@
-## Summary
+## Scope
 
-Describe the problem and the solution.
+Task / Feature:
 
-## Validation
+Owner:
 
-List the commands, tests, or manual checks performed.
+Sub-scope:
 
-## Quality checklist
+## What changed
 
-- [ ] The change is focused and targets the correct base branch.
-- [ ] No secrets, `.env` files, private keys, or sensitive data are included.
-- [ ] Linting, type checks, and relevant tests pass.
-- [ ] Database or API contracts are updated when applicable.
-- [ ] Documentation is updated when behavior changes.
-- [ ] Security, privacy, performance, and accessibility impacts were considered.
-- [ ] AI-generated changes were reviewed and understood by a human author.
 
-## Review notes
+## Allowed scope
 
-Call out risks, migrations, follow-up tasks, or areas needing special attention.
+
+## Files affected
+
+
+## Change classification
+
+API change: Yes / No
+
+Swagger updated: Yes / No / N/A
+
+Database change: Yes / No
+
+Migration: Yes / No / N/A
+
+AI change: Yes / No
+
+## Verification
+
+Tests added/updated:
+
+Tests run:
+
+## Review context
+
+Security considerations:
+
+Dependencies:
+
+Screenshots:
+
+Agent(s) used:
+
+Skill(s) loaded:
+
+Out-of-scope changes: None

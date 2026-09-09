@@ -1,0 +1,469 @@
+openapi: 3.1.0
+info:
+  title: LostLink API
+  version: 0.2.0
+  description: |
+    # Introduction
+    Public REST API for the LostLink university Lost & Found platform. The Go
+    API is the only public backend. Similarity assists discovery and never
+    proves ownership.
+
+    # Current scope
+    Health, authentication, public-safe lost/found reports, and report search
+    are implemented. Images, matching, claims, verification, tracking,
+    notifications, and staff workflows remain pending.
+
+    # Authentication
+    Access tokens are short-lived JWT bearer tokens. Refresh tokens are opaque,
+    rotated on every refresh, and carried only by an HttpOnly SameSite cookie.
+    Browser calls to authentication mutation endpoints must include the exact
+    configured `Origin` header.
+servers:
+  - url: /api
+    description: Public API through Caddy
+  - url: /
+    description: Go API when run directly
+tags:
+  - name: Operations
+    description: Process health
+  - name: Authentication
+    description: Account and session lifecycle
+  - name: Reports
+    description: Public-safe lost and found reporting and discovery
+paths:
+  /health:
+    get:
+      tags: [Operations]
+      operationId: getHealth
+      summary: Get API health
+      responses:
+        "200":
+          description: API process is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /v1/auth/register:
+    post:
+      tags: [Authentication]
+      operationId: register
+      summary: Create a user account and session
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/SessionCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/OriginRejected"
+        "409":
+          description: The normalized identifier is already registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Start a session
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SessionOK"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid identifier or password; account existence is not disclosed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          $ref: "#/components/responses/OriginRejected"
+        "429":
+          description: Too many attempts for this normalized identifier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshSession
+      summary: Rotate the refresh token and issue a new access token
+      description: Requires the HttpOnly `lostlink_refresh` cookie set by register or login.
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+      responses:
+        "200":
+          $ref: "#/components/responses/SessionOK"
+        "401":
+          description: Cookie missing, invalid, expired, revoked, or reused
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          $ref: "#/components/responses/OriginRejected"
+  /v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the current refresh session
+      description: Idempotent when no refresh cookie is present.
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+      responses:
+        "204":
+          description: Session revoked and refresh cookie cleared
+        "403":
+          $ref: "#/components/responses/OriginRejected"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getCurrentUser
+      summary: Get the authenticated account
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current public account fields
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+                additionalProperties: false
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+  /v1/auth/google/start:
+    get:
+      tags: [Authentication]
+      operationId: startGoogleSignIn
+      summary: Start Google OpenID Connect sign-in
+      description: Sets short-lived HttpOnly state, PKCE verifier, and nonce cookies before redirecting to Google.
+      responses:
+        "302":
+          description: Redirect to Google's authorization endpoint
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+            Set-Cookie:
+              schema: { type: string }
+              description: HttpOnly, SameSite=Lax transient OAuth cookies with a ten-minute lifetime
+        "503":
+          description: Google OAuth is not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /v1/auth/google/callback:
+    get:
+      tags: [Authentication]
+      operationId: completeGoogleSignIn
+      summary: Validate Google's authorization response
+      description: Exchanges the authorization code with PKCE, validates the Google ID token and nonce, creates a local refresh session, then redirects to the fixed web callback page. Google tokens are not persisted.
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        "303":
+          description: Redirect to `/auth/callback`, with a generic error marker when verification fails
+          headers:
+            Location:
+              schema: { type: string, format: uri-reference }
+            Set-Cookie:
+              schema: { type: string }
+              description: Clears transient cookies and, on success, sets the HttpOnly refresh cookie
+  /v1/reports:
+    get:
+      tags: [Reports]
+      operationId: searchReports
+      summary: Search active public-safe reports
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: type, in: query, schema: { $ref: "#/components/schemas/ReportType" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200":
+          $ref: "#/components/responses/ReportList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Reports]
+      operationId: createReport
+      summary: Create a lost or found report
+      description: Private verification details are deliberately excluded.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateReportRequest" }
+      responses:
+        "201":
+          description: Report created, or the original response for an identical idempotent retry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportEnvelope" }
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "409":
+          description: Idempotency-Key was reused with different content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/reports/mine:
+    get:
+      tags: [Reports]
+      operationId: listMyReports
+      summary: List reports owned by the authenticated account
+      security:
+        - BearerAuth: []
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200":
+          $ref: "#/components/responses/ReportList"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+  /v1/reports/{reportId}:
+    get:
+      tags: [Reports]
+      operationId: getReport
+      summary: Get an active public-safe report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Public-safe report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportEnvelope" }
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived access token returned by register, login, or refresh.
+  parameters:
+    Origin:
+      name: Origin
+      in: header
+      required: true
+      description: Must exactly match the configured WEB_ORIGIN.
+      schema:
+        type: string
+        format: uri
+      example: http://localhost:8088
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID generated once per logical submission and reused only for an identical retry.
+      schema: { type: string, format: uuid }
+  responses:
+    SessionCreated:
+      description: Account created; rotated refresh credential is set as an HttpOnly cookie
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: HttpOnly, SameSite=Strict refresh-token cookie
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SessionResponse" }
+    SessionOK:
+      description: Session issued; rotated refresh credential is set as an HttpOnly cookie
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: HttpOnly, SameSite=Strict refresh-token cookie
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/SessionResponse" }
+    BadRequest:
+      description: Malformed JSON, missing fields, or request body larger than 16 KiB
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ValidationFailed:
+      description: Identifier or password does not satisfy account rules
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    OriginRejected:
+      description: Origin is absent or does not match WEB_ORIGIN
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    AuthenticationRequired:
+      description: Bearer token is missing, invalid, or expired
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    InternalError:
+      description: Request failed without exposing an internal error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ReportList:
+      description: Bounded report page
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reports, pagination]
+            properties:
+              reports:
+                type: array
+                items: { $ref: "#/components/schemas/Report" }
+              pagination: { $ref: "#/components/schemas/Pagination" }
+            additionalProperties: false
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status: { type: string, examples: [ok] }
+        service: { type: string, examples: [api] }
+      additionalProperties: false
+    CredentialsRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          minLength: 3
+          maxLength: 254
+          description: Case-insensitive login identifier, normalized by the server.
+          examples: [student@example.edu]
+        password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+      additionalProperties: false
+    User:
+      type: object
+      required: [id, identifier, role, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        identifier: { type: string }
+        role:
+          type: string
+          enum: [user, staff, admin]
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    SessionResponse:
+      type: object
+      required: [access_token, token_type, expires_at, user]
+      properties:
+        access_token:
+          type: string
+          writeOnly: true
+          description: Short-lived JWT; keep in memory and send as a Bearer token.
+        token_type: { type: string, const: Bearer }
+        expires_at: { type: string, format: date-time }
+        user: { $ref: "#/components/schemas/User" }
+      additionalProperties: false
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+          additionalProperties: false
+      additionalProperties: false
+    ReportType:
+      type: string
+      enum: [lost, found]
+    CreateReportRequest:
+      type: object
+      required: [report_type, item_name, category, public_description, event_date, approximate_location]
+      properties:
+        report_type: { $ref: "#/components/schemas/ReportType" }
+        item_name: { type: string, minLength: 2, maxLength: 100 }
+        category: { type: string, minLength: 2, maxLength: 80 }
+        public_description: { type: string, minLength: 10, maxLength: 1000 }
+        event_date: { type: string, format: date }
+        approximate_time:
+          oneOf:
+            - { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+            - { type: string, const: '' }
+        approximate_location: { type: string, minLength: 2, maxLength: 120 }
+      additionalProperties: false
+    Report:
+      type: object
+      required: [id, report_type, item_name, category, public_description, event_date, approximate_time, approximate_location, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        report_type: { $ref: "#/components/schemas/ReportType" }
+        item_name: { type: string }
+        category: { type: string }
+        public_description: { type: string }
+        event_date: { type: string, format: date }
+        approximate_time: { type: [string, "null"] }
+        approximate_location: { type: string }
+        created_at: { type: string, format: date-time }
+        withdrawn_at: { type: string, format: date-time }
+      additionalProperties: false
+    ReportEnvelope:
+      type: object
+      required: [report]
+      properties:
+        report: { $ref: "#/components/schemas/Report" }
+      additionalProperties: false
+    Pagination:
+      type: object
+      required: [limit, offset]
+      properties:
+        limit: { type: integer, minimum: 1, maximum: 50 }
+        offset: { type: integer, minimum: 0, maximum: 10000 }
+      additionalProperties: false

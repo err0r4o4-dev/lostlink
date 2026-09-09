@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Review changes with evidence and severity"
+  default_prompt: "Use $code-review to review this LostLink change."

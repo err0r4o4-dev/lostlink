@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image Upload Storage"
+  short_description: "Secure image uploads and object storage"
+  default_prompt: "Use $image-upload-storage to design this upload flow."

@@ -2,7 +2,7 @@
 
 ## Workflow
 
-1. Branch from the latest `develop` using `task/<topic>`.
+1. Branch from the latest `develop` using the owner-specific `feature/*` convention in `docs/workflow/git-workflow.md`.
 2. Keep each branch focused on one task.
 3. Use descriptive conventional commits, such as `feat: add item search`.
 4. Open a pull request into `develop` and complete the pull request checklist.
@@ -25,28 +25,16 @@ server-side. They remain project policy even when enforcement is unavailable.
 
 ## Quality commands
 
-The CI workflow automatically runs recognized `package.json` scripts when they
-exist. Supported script names are:
+Run the service-specific checks before opening a pull request:
 
-```text
-lint
-typecheck
-test
-coverage
-db:validate
-migration:test
-api:contract
-test:integration
-test:e2e
-architecture:check
-performance:test
-ai:evaluate
-build
+```bash
+cd apps/web && npm run lint && npm run typecheck && npm test -- --run && npm run build
+cd apps/api && gofmt -w cmd internal docs && go vet ./... && go test ./... && go build -o .cache/lostlink-api ./cmd/api
+cd apps/ai && python -m pip install -e ".[dev]" && python -m ruff check . && python -m pytest
+docker compose --env-file .env.example config
 ```
 
-Python projects receive syntax compilation and standard-library unit test
-discovery automatically. Add stack-specific commands to CI once the project
-chooses its framework and dependency manager.
+Add Playwright, migration up/down, integration, security, or AI evaluation checks when the affected scope requires them. Never weaken a gate to obtain a pass.
 
 ## Security
 

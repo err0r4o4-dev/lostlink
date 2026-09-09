@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Branch PR Workflow"
+  short_description: "Apply LostLink branch and PR rules"
+  default_prompt: "Use $git-branch-pr-workflow to prepare this branch or PR."

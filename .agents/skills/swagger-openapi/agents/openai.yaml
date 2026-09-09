@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swagger OpenAPI"
+  short_description: "Maintain explicit public API contracts"
+  default_prompt: "Use $swagger-openapi to document this REST contract."
