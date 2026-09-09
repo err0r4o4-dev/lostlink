@@ -1,0 +1,38 @@
+name: Discord CI notification
+
+on:
+  workflow_run:
+    workflows:
+      - Quality gates
+      - CodeQL
+      - Pull request policy
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-ci-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    name: Send filtered CI result to Discord
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted notification code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Send notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python .github/scripts/discord_notification.py
