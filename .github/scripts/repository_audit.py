@@ -88,6 +88,10 @@ def useful_secret_value(raw_value: str) -> bool:
     value = raw_value.strip().strip("'\" ,")
     if not value or PLACEHOLDER_PATTERN.fullmatch(value):
         return False
+    # Translated UI labels such as `'Password': 'รหัสผ่าน'` are not credentials.
+    # Secret values used by this repository's tooling are expected to be ASCII.
+    if not value.isascii():
+        return False
     if any(marker in value.lower() for marker in ("replace-me", "replace_me", "changeme")):
         return False
     if value.startswith(("process.env.", "os.environ", "getenv(")):

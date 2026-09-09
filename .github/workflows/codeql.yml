@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   packages: read
   security-events: write
@@ -49,7 +50,9 @@ jobs:
   javascript-typescript:
     name: CodeQL (JavaScript/TypeScript)
     needs: detect-languages
-    if: needs.detect-languages.outputs.javascript == 'true'
+    if: >-
+      needs.detect-languages.outputs.javascript == 'true' &&
+      (github.event.repository.private == false || vars.CODEQL_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -70,7 +73,9 @@ jobs:
   python:
     name: CodeQL (Python)
     needs: detect-languages
-    if: needs.detect-languages.outputs.python == 'true'
+    if: >-
+      needs.detect-languages.outputs.python == 'true' &&
+      (github.event.repository.private == false || vars.CODEQL_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -91,24 +96,26 @@ jobs:
   go:
     name: CodeQL (Go)
     needs: detect-languages
-    if: needs.detect-languages.outputs.go == 'true'
+    if: >-
+      needs.detect-languages.outputs.go == 'true' &&
+      (github.event.repository.private == false || vars.CODEQL_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: go
-          build-mode: manual
-
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
+          build-mode: manual
 
       - name: Build
         working-directory: apps/api
