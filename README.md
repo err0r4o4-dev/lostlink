@@ -65,7 +65,7 @@ Implemented:
 
 - React application shell with a project-foundation landing page
 - Shared React Query provider, React Router setup, and typed HTTP client foundation
-- Go API process health endpoint and Swagger UI
+- Go API process health endpoint and Scalar API Reference
 - Go configuration, PostgreSQL connection, structured logging, and graceful shutdown foundations
 - Internal FastAPI process health endpoint with public OpenAPI pages disabled
 - Initial reversible migration that enables the PostgreSQL `vector` extension
@@ -163,7 +163,7 @@ See the [system overview](docs/architecture/system-overview.md), [system flow](d
 - Gin
 - pgx/v5 and pgxpool
 - `log/slog`
-- Swaggo Swagger UI
+- Scalar API Reference
 - Standard `net/http/httptest`
 
 ### Python AI service
@@ -355,27 +355,28 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 | Method and URL | Purpose |
 | --- | --- |
 | `GET http://localhost:8088/api/health` | API process liveness |
-| `GET http://localhost:8088/api/swagger/index.html` | Public Go Swagger UI |
-| `GET http://localhost:8088/api/swagger/openapi.yaml` | Canonical OpenAPI 3 document |
+| `GET http://localhost:8088/docs` | Public Scalar API Reference |
+| `GET http://localhost:8088/docs/swagger.yaml` | Canonical OpenAPI 3.1 document |
+| `GET http://localhost:8088/api/swagger/index.html` | Legacy URL; redirects to `/docs` |
 
 ### Direct service routes
 
 | Service | Method and URL | Purpose |
 | --- | --- | --- |
 | Go API | `GET http://localhost:8080/health` | Process liveness when run directly |
-| Go API | `GET http://localhost:8080/swagger/index.html` | Swagger UI when run directly |
-| Go API | `GET http://localhost:8080/swagger/openapi.yaml` | OpenAPI document when run directly |
+| Go API | `GET http://localhost:8080/docs` | Scalar API Reference when run directly |
+| Go API | `GET http://localhost:8080/docs/swagger.yaml` | OpenAPI document when run directly |
 | Python AI | `GET http://localhost:8000/health` | Internal process liveness when run directly |
 
 Examples:
 
 ```bash
 curl http://localhost:8088/api/health
-curl -i http://localhost:8088/api/swagger/index.html
-curl -i http://localhost:8088/api/swagger/openapi.yaml
+curl -i http://localhost:8088/docs
+curl -i http://localhost:8088/docs/swagger.yaml
 ```
 
-The canonical public contract is [`apps/api/docs/swagger.yaml`](apps/api/docs/swagger.yaml). It follows an OpenAPI 3.0 `info` → `servers` → `tags` → `paths` → `components` structure and is embedded into the Go binary so the file and Swagger UI cannot drift. The AI service is internal in Docker Compose, and its OpenAPI JSON, Swagger UI, and ReDoc routes are deliberately disabled. Public product APIs will use REST/JSON under `/v1`; no product routes exist in the current bootstrap.
+The canonical public contract is [`apps/api/docs/swagger.yaml`](apps/api/docs/swagger.yaml). It follows an OpenAPI 3.1 `info` → `servers` → `tags` → `paths` → `components` structure and is embedded into the Go binary so the file and Scalar page cannot drift. Scalar's browser assets are loaded from the pinned `@scalar/api-reference@1.63.0` CDN package, so the documentation UI requires internet access while the YAML route remains local. The AI service is internal in Docker Compose, and its OpenAPI JSON, documentation UI, and ReDoc routes are deliberately disabled. Public product APIs will use REST/JSON under `/v1`; no product routes exist in the current bootstrap.
 
 ## Database migrations
 

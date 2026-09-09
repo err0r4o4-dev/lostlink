@@ -1,8 +1,13 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: LostLink API
   description: |
     The public REST API for the LostLink university Lost & Found platform.
+
+    ## Introduction
+    LostLink keeps reporting, discovery, matching, claiming, ownership
+    verification, staff review, tracking, pickup, return, and closure as
+    explicit stages. The Go API is the only public application backend.
 
     ## Current scope
     The API currently exposes process health and public API documentation only.
@@ -62,9 +67,9 @@ components:
         status:
           type: string
           description: Process health state.
-          example: ok
+          examples: [ok]
         service:
           type: string
           description: Service identifier.
-          example: api
+          examples: [api]
       additionalProperties: false

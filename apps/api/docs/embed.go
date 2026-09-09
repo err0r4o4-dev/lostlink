@@ -3,7 +3,7 @@ package docs
 
 import _ "embed"
 
-// OpenAPI contains the canonical Swagger UI-compatible OpenAPI 3 specification.
+// OpenAPI contains the canonical Scalar-compatible OpenAPI 3.1 specification.
 //
 //go:embed swagger.yaml
 var OpenAPI []byte

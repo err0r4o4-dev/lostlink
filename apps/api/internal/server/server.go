@@ -8,8 +8,7 @@ import (
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/watchakorn-18k/scalar-go"
 )
 
 type HealthResponse struct {
@@ -21,15 +20,37 @@ func New(logger *slog.Logger) http.Handler {
 	router := gin.New()
 	router.Use(gin.Recovery(), requestLogger(logger))
 	router.GET("/health", health)
-	swaggerUI := ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("openapi.yaml"))
-	router.GET("/swagger/*any", func(c *gin.Context) {
-		if c.Param("any") == "/openapi.yaml" {
-			c.Data(http.StatusOK, "application/yaml; charset=utf-8", apiDocs.OpenAPI)
+	docsHTML, docsErr := scalar.ApiReferenceHTML(&scalar.Options{
+		CDN:         "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.63.0",
+		Layout:      scalar.LayoutModern,
+		SpecURL:     "docs/swagger.yaml",
+		SpecContent: string(apiDocs.OpenAPI),
+		DarkMode:    true,
+		ShowSidebar: true,
+		CustomOptions: scalar.CustomOptions{
+			PageTitle: "LostLink API Reference",
+		},
+	})
+	router.GET("/docs", func(c *gin.Context) {
+		if docsErr != nil {
+			c.String(http.StatusInternalServerError, "API documentation is unavailable")
 			return
 		}
-		swaggerUI(c)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(docsHTML))
+	})
+	router.GET("/docs/swagger.yaml", serveOpenAPI)
+	router.GET("/swagger/*any", func(c *gin.Context) {
+		if c.Param("any") == "/openapi.yaml" {
+			serveOpenAPI(c)
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, "/docs")
 	})
 	return router
+}
+
+func serveOpenAPI(c *gin.Context) {
+	c.Data(http.StatusOK, "application/yaml; charset=utf-8", apiDocs.OpenAPI)
 }
 
 // health reports process liveness only.

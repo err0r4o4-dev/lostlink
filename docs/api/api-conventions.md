@@ -4,8 +4,9 @@
 
 - Public application endpoints use JSON under `/v1`.
 - `/health` is an unversioned operational liveness endpoint.
-- The canonical OpenAPI 3.0 contract is `apps/api/docs/swagger.yaml` and is embedded into the Go API binary.
-- Swagger UI is served at `/swagger/index.html`, and the source document is served at `/swagger/openapi.yaml`; both describe public Go endpoints only.
+- The canonical OpenAPI 3.1 contract is `apps/api/docs/swagger.yaml` and is embedded into the Go API binary.
+- Scalar API Reference is served at `/docs`, and the source document is served at `/docs/swagger.yaml`; both describe public Go endpoints only.
+- The legacy `/swagger/index.html` route redirects to `/docs`.
 - Internal AI endpoints are not included in public Swagger.
 
 ## DTOs and errors
