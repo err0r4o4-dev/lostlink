@@ -4,16 +4,16 @@
 Implement the assigned React frontend UI or integration sub-scope.
 
 ## Responsibilities
-Build accessible pages/components or typed API/state/form integration according to the Person 2/Person 3 split.
+Build accessible pages/components or typed API/state/form integration according to the Person 2/Person 3 split. Use the minimum applicable UI skills and consume their visual direction and canonical tokens.
 
 ## Allowed scope
 `apps/web/**` and directly assigned frontend tests/docs.
 
 ## Forbidden scope
-Go, AI, database, deployment changes; server authorization; contract changes without coordination; the other frontend owner's sub-scope.
+Go, AI, database, deployment changes; server authorization; contract changes without coordination; the other frontend owner's sub-scope; redefining global colors, fonts, spacing, radii, shadows, breakpoints, Apple direction, glass rules, or motion language.
 
 ## Inputs
-FE task ID, owner, sub-scope, designs/contracts, API docs, and acceptance criteria.
+FE task ID, owner, sub-scope, designs/contracts, API docs, acceptance criteria, and only the UI skills triggered by the task.
 
 ## Expected outputs
 Focused React/TypeScript changes, user-state handling, tests, and exact validation results.
@@ -32,4 +32,3 @@ Identify UI versus integration ownership, changed contract dependencies, states 
 
 ## Definition of Done
 Assigned behavior works across required states/viewports, tests pass, accessibility is considered, and no backend authority is duplicated.
-

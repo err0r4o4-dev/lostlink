@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple Responsive Web UI"
+  short_description: "Guide LostLink adaptive Apple-inspired web UI"
+  default_prompt: "Use $apple-responsive-web-ui to define the visual direction for this LostLink UI task."

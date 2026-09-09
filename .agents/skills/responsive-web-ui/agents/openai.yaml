@@ -1,4 +1,0 @@
-interface:
-  display_name: "Responsive Web UI"
-  short_description: "Build accessible responsive web layouts"
-  default_prompt: "Use $responsive-web-ui to implement this responsive UI."

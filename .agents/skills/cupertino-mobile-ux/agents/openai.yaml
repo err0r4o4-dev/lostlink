@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cupertino Mobile UX"
+  short_description: "Shape LostLink mobile touch and Cupertino behavior"
+  default_prompt: "Use $cupertino-mobile-ux to design this small-screen touch interaction."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pixel Perfect UI Review"
+  short_description: "Review LostLink visual fidelity and token consistency"
+  default_prompt: "Use $pixel-perfect-ui-review to perform final visual QA on this LostLink interface."

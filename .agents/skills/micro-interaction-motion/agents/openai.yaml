@@ -1,0 +1,4 @@
+interface:
+  display_name: "Micro Interaction Motion"
+  short_description: "Define accessible LostLink interaction motion"
+  default_prompt: "Use $micro-interaction-motion to specify motion and reduced-motion behavior for this interaction."
