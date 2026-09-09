@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const minimumJWTSecretBytes = 29
+
 type Config struct {
 	Environment        string
 	Port               string
@@ -51,8 +53,8 @@ func Load() (Config, error) {
 	if cfg.RefreshTTL, err = time.ParseDuration(valueOrDefault("JWT_REFRESH_TTL", "720h")); err != nil || cfg.RefreshTTL <= cfg.JWTAccessTTL {
 		return Config{}, fmt.Errorf("JWT_REFRESH_TTL must be longer than JWT_ACCESS_TTL")
 	}
-	if len(cfg.JWTSecret) < 32 {
-		return Config{}, fmt.Errorf("JWT_SECRET must contain at least 32 bytes")
+	if len(cfg.JWTSecret) < minimumJWTSecretBytes {
+		return Config{}, fmt.Errorf("JWT_SECRET must contain at least %d bytes", minimumJWTSecretBytes)
 	}
 	if cfg.Environment == "production" && cfg.JWTSecret == "replace-me-with-at-least-32-random-bytes" {
 		return Config{}, fmt.Errorf("JWT_SECRET placeholder is forbidden in production")

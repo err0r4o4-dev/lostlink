@@ -10,7 +10,8 @@
 - Minimal JWT claims: `sub`, `role`, `iss`, `aud`, `iat`, `exp`, `jti`. Do not include password data, phone numbers, private ownership answers, sensitive item secrets, or mutable profile data.
 
 The current API pins HS256 and reads only `JWT_SECRET`, which must contain at
-least 32 bytes. The secret stays server-side and must be replaced outside local development. A future
+least 29 bytes; 32 or more random bytes remain recommended. The secret stays
+server-side and must be replaced outside local development. A future
 production hardening decision should migrate to Ed25519/EdDSA (or another
 approved asymmetric scheme) with an explicit overlap and rotation plan.
 

@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func setValidAuthEnvironment(t *testing.T) {
 	t.Helper()
@@ -8,7 +11,7 @@ func setValidAuthEnvironment(t *testing.T) {
 	t.Setenv("API_PORT", "8080")
 	t.Setenv("JWT_ACCESS_TTL", "15m")
 	t.Setenv("JWT_REFRESH_TTL", "720h")
-	t.Setenv("JWT_SECRET", "test-only-signing-key-at-least-32-bytes")
+	t.Setenv("JWT_SECRET", strings.Repeat("a", minimumJWTSecretBytes))
 	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 	t.Setenv("GOOGLE_OAUTH_REDIRECT_URL", "")
@@ -44,12 +47,21 @@ func TestLoadRejectsInvalidPort(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsShortSigningKey(t *testing.T) {
+func TestLoadAccepts29ByteJWTSecret(t *testing.T) {
 	setValidAuthEnvironment(t)
-	t.Setenv("JWT_SECRET", "short")
+	t.Setenv("JWT_SECRET", strings.Repeat("a", 29))
+
+	if _, err := Load(); err != nil {
+		t.Fatalf("Load() unexpected error for a 29-byte JWT secret: %v", err)
+	}
+}
+
+func TestLoadRejects28ByteJWTSecret(t *testing.T) {
+	setValidAuthEnvironment(t)
+	t.Setenv("JWT_SECRET", strings.Repeat("a", 28))
 
 	if _, err := Load(); err == nil {
-		t.Fatal("Load() expected an error for a short JWT signing key")
+		t.Fatal("Load() expected an error for a 28-byte JWT secret")
 	}
 }
 
