@@ -21,13 +21,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Check patch whitespace
-        if: github.event_name == 'push'
         run: git show --check --format= --no-renames HEAD
       - name: Audit repository
+        if: always()
         run: python .github/scripts/repository_audit.py
       - name: Upload audit report
         if: always()
