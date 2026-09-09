@@ -26,5 +26,4 @@ The AI service is separately deployed because Python/ML dependencies and compute
 
 ## Bootstrap state
 
-Only health endpoints, Swagger plumbing, connection/adaptor skeletons, and development infrastructure exist. Product tables and workflows are intentionally deferred.
-
+Health, Swagger, local account authentication, refresh-session rotation, role middleware, and public-safe text report discovery are implemented alongside the development infrastructure. Image storage and later product workflows remain deferred.

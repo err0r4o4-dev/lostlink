@@ -5,4 +5,6 @@ import { afterEach } from 'vitest'
 
 afterEach(() => {
   cleanup()
+  window.localStorage.removeItem('lostlink-language')
+  document.documentElement.lang = 'en'
 })

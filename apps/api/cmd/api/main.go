@@ -1,13 +1,4 @@
 // Package main starts the public LostLink API.
-//
-// @title LostLink API
-// @version 0.1.0
-// @description Bootstrap public API. Product workflows are not implemented.
-// @BasePath /
-// @schemes http https
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
 package main
 
 import (
@@ -20,9 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/err0r4o4-dev/lostlink/apps/api/docs/swagger"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/database"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/server"
 )
 
@@ -46,9 +38,20 @@ func main() {
 		defer pool.Close()
 	}
 
+	var authService *auth.Service
+	var reportService *report.Service
+	var googleOAuth *auth.GoogleOAuth
+	if pool != nil {
+		authService = auth.NewService(auth.NewRepository(pool), auth.NewTokenManager(
+			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.RefreshTTL,
+		))
+		reportService = report.NewService(report.NewRepository(pool))
+		googleOAuth = auth.NewGoogleOAuth(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)
+	}
+
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(logger),
+		Handler:           server.New(os.Stdout, server.Options{Auth: authService, Reports: reportService, WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

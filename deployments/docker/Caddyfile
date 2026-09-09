@@ -1,15 +1,20 @@
 {
-    auto_https off
+	auto_https off
 }
 
 :8080 {
-    encode zstd gzip
+	encode zstd gzip
 
-    handle_path /api/* {
-        reverse_proxy api:8080
-    }
+	@api_docs path /docs /docs/*
+	handle @api_docs {
+		reverse_proxy api:8080
+	}
 
-    handle {
-        reverse_proxy web:8080
-    }
+	handle_path /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:8080
+	}
 }
