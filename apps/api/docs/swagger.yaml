@@ -157,6 +157,45 @@ paths:
                 additionalProperties: false
         "401":
           $ref: "#/components/responses/AuthenticationRequired"
+  /v1/auth/google/start:
+    get:
+      tags: [Authentication]
+      operationId: startGoogleSignIn
+      summary: Start Google OpenID Connect sign-in
+      description: Sets short-lived HttpOnly state, PKCE verifier, and nonce cookies before redirecting to Google.
+      responses:
+        "302":
+          description: Redirect to Google's authorization endpoint
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+            Set-Cookie:
+              schema: { type: string }
+              description: HttpOnly, SameSite=Lax transient OAuth cookies with a ten-minute lifetime
+        "503":
+          description: Google OAuth is not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /v1/auth/google/callback:
+    get:
+      tags: [Authentication]
+      operationId: completeGoogleSignIn
+      summary: Validate Google's authorization response
+      description: Exchanges the authorization code with PKCE, validates the Google ID token and nonce, creates a local refresh session, then redirects to the fixed web callback page. Google tokens are not persisted.
+      parameters:
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+      responses:
+        "303":
+          description: Redirect to `/auth/callback`, with a generic error marker when verification fails
+          headers:
+            Location:
+              schema: { type: string, format: uri-reference }
+            Set-Cookie:
+              schema: { type: string }
+              description: Clears transient cookies and, on success, sets the HttpOnly refresh cookie
   /v1/reports:
     get:
       tags: [Reports]

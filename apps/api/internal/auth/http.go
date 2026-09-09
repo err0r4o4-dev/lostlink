@@ -11,11 +11,18 @@ import (
 
 const refreshCookie = "lostlink_refresh"
 
+const (
+	googleStateCookie    = "lostlink_google_state"
+	googleVerifierCookie = "lostlink_google_verifier"
+	googleNonceCookie    = "lostlink_google_nonce"
+)
+
 type HTTPHandler struct {
 	service       *Service
 	webOrigin     string
 	secureCookies bool
 	loginAttempts *attemptLimiter
+	google        *GoogleOAuth
 }
 
 type credentialsRequest struct {
@@ -30,13 +37,15 @@ type sessionResponse struct {
 	User        PublicUser `json:"user"`
 }
 
-func RegisterRoutes(router *gin.RouterGroup, service *Service, webOrigin string, secureCookies bool) {
-	handler := &HTTPHandler{service: service, webOrigin: strings.TrimRight(webOrigin, "/"), secureCookies: secureCookies, loginAttempts: newAttemptLimiter(5, time.Minute)}
+func RegisterRoutes(router *gin.RouterGroup, service *Service, webOrigin string, secureCookies bool, googleOAuth *GoogleOAuth) {
+	handler := &HTTPHandler{service: service, webOrigin: strings.TrimRight(webOrigin, "/"), secureCookies: secureCookies, loginAttempts: newAttemptLimiter(5, time.Minute), google: googleOAuth}
 	router.POST("/register", handler.requireOrigin, handler.register)
 	router.POST("/login", handler.requireOrigin, handler.login)
 	router.POST("/refresh", handler.requireOrigin, handler.refresh)
 	router.POST("/logout", handler.requireOrigin, handler.logout)
 	router.GET("/me", handler.authenticate, handler.me)
+	router.GET("/google/start", handler.googleStart)
+	router.GET("/google/callback", handler.googleCallback)
 }
 
 func (handler *HTTPHandler) register(c *gin.Context) {
@@ -121,8 +130,12 @@ func (handler *HTTPHandler) me(c *gin.Context) {
 }
 
 func (handler *HTTPHandler) writeSession(c *gin.Context, status int, session Session) {
-	http.SetCookie(c.Writer, &http.Cookie{Name: refreshCookie, Value: session.RefreshToken, Path: "/", MaxAge: int(handler.service.tokens.refreshTTL.Seconds()), HttpOnly: true, Secure: handler.secureCookies, SameSite: http.SameSiteStrictMode})
+	handler.setRefresh(c, session)
 	c.JSON(status, sessionResponse{AccessToken: session.AccessToken, TokenType: "Bearer", ExpiresAt: session.AccessExpiry, User: publicUser(session.User)})
+}
+
+func (handler *HTTPHandler) setRefresh(c *gin.Context, session Session) {
+	http.SetCookie(c.Writer, &http.Cookie{Name: refreshCookie, Value: session.RefreshToken, Path: "/", MaxAge: int(handler.service.tokens.refreshTTL.Seconds()), HttpOnly: true, Secure: handler.secureCookies, SameSite: http.SameSiteStrictMode})
 }
 
 func (handler *HTTPHandler) clearRefresh(c *gin.Context) {
@@ -136,6 +149,68 @@ func (handler *HTTPHandler) requireOrigin(c *gin.Context) {
 		return
 	}
 	c.Next()
+}
+
+func (handler *HTTPHandler) googleStart(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	if handler.google == nil {
+		writeError(c, http.StatusServiceUnavailable, "google_oauth_unavailable", "Google sign-in is not configured")
+		return
+	}
+	state, stateErr := randomToken(32)
+	verifier, verifierErr := randomToken(32)
+	nonce, nonceErr := randomToken(32)
+	if stateErr != nil || verifierErr != nil || nonceErr != nil {
+		writeError(c, http.StatusInternalServerError, "internal_error", "The request could not be completed")
+		return
+	}
+	handler.setOAuthCookie(c, googleStateCookie, state)
+	handler.setOAuthCookie(c, googleVerifierCookie, verifier)
+	handler.setOAuthCookie(c, googleNonceCookie, nonce)
+	c.Redirect(http.StatusFound, handler.google.AuthorizationURL(state, verifier, nonce))
+}
+
+func (handler *HTTPHandler) googleCallback(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	stateCookie, stateErr := c.Cookie(googleStateCookie)
+	verifier, verifierErr := c.Cookie(googleVerifierCookie)
+	nonce, nonceErr := c.Cookie(googleNonceCookie)
+	handler.clearOAuthCookies(c)
+	if handler.google == nil || stateErr != nil || verifierErr != nil || nonceErr != nil ||
+		c.Query("error") != "" || c.Query("code") == "" || !constantTimeEqual(stateCookie, c.Query("state")) {
+		handler.redirectGoogleResult(c, false)
+		return
+	}
+	identity, err := handler.google.Exchange(c.Request.Context(), c.Query("code"), verifier, nonce)
+	if err != nil {
+		handler.redirectGoogleResult(c, false)
+		return
+	}
+	session, err := handler.service.LoginGoogle(c.Request.Context(), identity.Subject, identity.Email)
+	if err != nil {
+		handler.redirectGoogleResult(c, false)
+		return
+	}
+	handler.setRefresh(c, session)
+	handler.redirectGoogleResult(c, true)
+}
+
+func (handler *HTTPHandler) setOAuthCookie(c *gin.Context, name, value string) {
+	http.SetCookie(c.Writer, &http.Cookie{Name: name, Value: value, Path: "/", MaxAge: 600, HttpOnly: true, Secure: handler.secureCookies, SameSite: http.SameSiteLaxMode})
+}
+
+func (handler *HTTPHandler) clearOAuthCookies(c *gin.Context) {
+	for _, name := range []string{googleStateCookie, googleVerifierCookie, googleNonceCookie} {
+		http.SetCookie(c.Writer, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1, Expires: time.Unix(1, 0), HttpOnly: true, Secure: handler.secureCookies, SameSite: http.SameSiteLaxMode})
+	}
+}
+
+func (handler *HTTPHandler) redirectGoogleResult(c *gin.Context, success bool) {
+	destination := handler.webOrigin + "/auth/callback"
+	if !success {
+		destination += "?error=google_sign_in_failed"
+	}
+	c.Redirect(http.StatusSeeOther, destination)
 }
 
 func (handler *HTTPHandler) authenticate(c *gin.Context) {

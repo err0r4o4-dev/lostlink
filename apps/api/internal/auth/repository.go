@@ -49,14 +49,75 @@ func (repository *Repository) CreateUserWithSession(ctx context.Context, identif
 
 func (repository *Repository) UserByIdentifier(ctx context.Context, identifier string) (User, error) {
 	return repository.scanUser(repository.pool.QueryRow(ctx, `
-		SELECT id::text, identifier, password_hash, role, created_at
+		SELECT id::text, identifier, COALESCE(password_hash, ''), role, created_at
 		FROM users WHERE identifier = $1`, identifier))
 }
 
 func (repository *Repository) UserByID(ctx context.Context, id string) (User, error) {
 	return repository.scanUser(repository.pool.QueryRow(ctx, `
-		SELECT id::text, identifier, password_hash, role, created_at
+		SELECT id::text, identifier, COALESCE(password_hash, ''), role, created_at
 		FROM users WHERE id = $1`, id))
+}
+
+func (repository *Repository) GoogleUser(ctx context.Context, subject, email string, now time.Time) (User, error) {
+	tx, err := repository.pool.Begin(ctx)
+	if err != nil {
+		return User{}, fmt.Errorf("begin Google identity login: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var user User
+	err = tx.QueryRow(ctx, `
+		SELECT u.id::text, u.identifier, COALESCE(u.password_hash, ''), u.role, u.created_at
+		FROM oauth_identities i JOIN users u ON u.id = i.user_id
+		WHERE i.provider = 'google' AND i.provider_subject = $1`, subject,
+	).Scan(&user.ID, &user.Identifier, &user.PasswordHash, &user.Role, &user.CreatedAt)
+	if err == nil {
+		if _, err := tx.Exec(ctx, `UPDATE oauth_identities SET last_login_at = $2 WHERE provider = 'google' AND provider_subject = $1`, subject, now); err != nil {
+			return User{}, fmt.Errorf("update Google identity login: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return User{}, fmt.Errorf("commit Google identity login: %w", err)
+		}
+		return user, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return User{}, fmt.Errorf("read Google identity: %w", err)
+	}
+
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (identifier, password_hash) VALUES ($1, NULL)
+		ON CONFLICT (identifier) DO NOTHING
+		RETURNING id::text, identifier, COALESCE(password_hash, ''), role, created_at`, email,
+	).Scan(&user.ID, &user.Identifier, &user.PasswordHash, &user.Role, &user.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrConflict
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("resolve Google user: %w", err)
+	}
+
+	var linkedUserID string
+	err = tx.QueryRow(ctx, `
+		INSERT INTO oauth_identities (user_id, provider, provider_subject, last_login_at)
+		VALUES ($1::uuid, 'google', $2, $3)
+		ON CONFLICT (provider, provider_subject) DO UPDATE SET last_login_at = EXCLUDED.last_login_at
+		RETURNING user_id::text`, user.ID, subject, now,
+	).Scan(&linkedUserID)
+	if err != nil {
+		return User{}, fmt.Errorf("link Google identity: %w", err)
+	}
+	if linkedUserID != user.ID {
+		err = tx.QueryRow(ctx, `SELECT id::text, identifier, COALESCE(password_hash, ''), role, created_at FROM users WHERE id = $1::uuid`, linkedUserID).
+			Scan(&user.ID, &user.Identifier, &user.PasswordHash, &user.Role, &user.CreatedAt)
+		if err != nil {
+			return User{}, fmt.Errorf("read linked Google user: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return User{}, fmt.Errorf("commit Google identity link: %w", err)
+	}
+	return user, nil
 }
 
 type rowScanner interface{ Scan(dest ...any) error }
@@ -96,7 +157,7 @@ func (repository *Repository) RotateSession(ctx context.Context, digest, nextDig
 	var user User
 	err = tx.QueryRow(ctx, `
 		SELECT s.id::text, s.family_id::text, s.expires_at, s.revoked_at, s.replaced_by::text,
-		       u.id::text, u.identifier, u.password_hash, u.role, u.created_at
+		       u.id::text, u.identifier, COALESCE(u.password_hash, ''), u.role, u.created_at
 		FROM refresh_sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.token_digest = $1 FOR UPDATE`, digest,
 	).Scan(&sessionID, &familyID, &expiresAt, &revokedAt, &replacedBy,

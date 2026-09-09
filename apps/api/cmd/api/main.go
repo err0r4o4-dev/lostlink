@@ -40,16 +40,18 @@ func main() {
 
 	var authService *auth.Service
 	var reportService *report.Service
+	var googleOAuth *auth.GoogleOAuth
 	if pool != nil {
 		authService = auth.NewService(auth.NewRepository(pool), auth.NewTokenManager(
 			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSigningKey, cfg.JWTAccessTTL, cfg.RefreshTTL,
 		))
 		reportService = report.NewService(report.NewRepository(pool))
+		googleOAuth = auth.NewGoogleOAuth(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)
 	}
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(os.Stdout, server.Options{Auth: authService, Reports: reportService, WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production"}),
+		Handler:           server.New(os.Stdout, server.Options{Auth: authService, Reports: reportService, WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

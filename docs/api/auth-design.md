@@ -49,6 +49,38 @@ implemented together.
 - `POST /v1/auth/refresh`
 - `POST /v1/auth/logout`
 - `GET /v1/auth/me` (`BearerAuth`)
+- `GET /v1/auth/google/start`
+- `GET /v1/auth/google/callback`
 
 The canonical request, response, error, header, and cookie contract is
 [`apps/api/docs/swagger.yaml`](../../apps/api/docs/swagger.yaml).
+
+## Google OpenID Connect
+
+Google sign-in uses the server-side authorization-code flow with a fresh PKCE
+verifier, S256 challenge, state value, and nonce for each attempt. The
+callback validates the state cookie, exchanges the single-use code, verifies
+the ID-token signature/audience/issuer/expiry, requires a verified email, and
+checks the nonce before resolving a local account by Google's stable `sub`
+claim. Email is retained only as the local account identifier; it is not used
+as the provider identity key.
+
+Google sign-in does not automatically attach to a password account with the
+same identifier because password registration does not yet verify email
+ownership. Such a collision fails generically. A future account-linking flow
+must require an already authenticated local session and fresh Google proof.
+
+Google access and refresh tokens are not persisted. LostLink creates its own
+rotating refresh session, redirects to the fixed web callback page, and lets
+the frontend obtain a short-lived LostLink access token through `/refresh`.
+Configure all three variables together:
+
+```dotenv
+GOOGLE_OAUTH_CLIENT_ID=your-web-client-id
+GOOGLE_OAUTH_CLIENT_SECRET=your-web-client-secret
+GOOGLE_OAUTH_REDIRECT_URL=http://localhost:8088/api/v1/auth/google/callback
+```
+
+The redirect URL must exactly match an authorized redirect URI in Google Cloud.
+Production requires HTTPS. No Google-hosted-domain restriction is enforced
+until the university supplies an approved domain/admission policy.

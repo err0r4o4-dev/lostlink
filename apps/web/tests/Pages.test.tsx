@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, matchRoutes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { LoginPage } from '../src/pages/AuthPages'
+import { GoogleAuthCallbackPage, LoginPage } from '../src/pages/AuthPages'
 import { ReportLostPage } from '../src/pages/ReportPages'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
@@ -16,6 +16,7 @@ const approvedRoutes = [
   '/matches', '/matches/match-reference', '/verification', '/claims/new', '/claims/claim-reference',
   '/tracking', '/notifications', '/profile', '/help', '/locations', '/onboarding', '/staff',
   '/staff/reports', '/staff/matches', '/staff/claims', '/login', '/register', '/forgot-password', '/reset-password',
+  '/auth/callback',
 ]
 
 afterEach(() => vi.unstubAllGlobals())
@@ -80,6 +81,7 @@ describe('frontend completion routes', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'invalid_session', message: 'Authentication required' } }), { status: 401, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'access', token_type: 'Bearer', expires_at: '2099-01-01T00:00:00Z', user: { id: 'user-1', identifier: 'student@example.edu', role: 'user', created_at: '2026-09-09T00:00:00Z' } }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     render(<AuthProvider><MemoryRouter><LoginPage /></MemoryRouter></AuthProvider>)
+    expect(screen.getByRole('link', { name: 'Continue with Google' })).toHaveAttribute('href', '/api/v1/auth/google/start')
 
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     expect(await screen.findByText(/use at least 3 characters/i)).toBeInTheDocument()
@@ -87,6 +89,14 @@ describe('frontend completion routes', () => {
     await user.type(screen.getByLabelText(/^password/i), 'local-test-only')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/v1/auth/login', expect.objectContaining({ method: 'POST', credentials: 'include' })))
+  })
+
+  it('shows a generic Google callback failure without exposing provider details', () => {
+    render(<AuthContext.Provider value={authenticatedContext}><MemoryRouter initialEntries={['/auth/callback?error=google_sign_in_failed']}><GoogleAuthCallbackPage /></MemoryRouter></AuthContext.Provider>)
+
+    expect(screen.getByRole('heading', { name: 'Google sign-in failed' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Try again from the sign-in page')
+    expect(screen.queryByText(/authorization code|state value|client secret/i)).not.toBeInTheDocument()
   })
 
   it('rejects unsupported local image previews accessibly', () => {

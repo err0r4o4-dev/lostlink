@@ -23,6 +23,7 @@ type Options struct {
 	Reports       *report.Service
 	WebOrigin     string
 	SecureCookies bool
+	GoogleOAuth   *auth.GoogleOAuth
 }
 
 func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
@@ -38,7 +39,7 @@ func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
 	}), gin.Recovery())
 	router.GET("/health", health)
 	if options.Auth != nil {
-		auth.RegisterRoutes(router.Group("/v1/auth"), options.Auth, options.WebOrigin, options.SecureCookies)
+		auth.RegisterRoutes(router.Group("/v1/auth"), options.Auth, options.WebOrigin, options.SecureCookies, options.GoogleOAuth)
 		if options.Reports != nil {
 			report.RegisterRoutes(router.Group("/v1/reports"), options.Reports, options.Auth)
 		}

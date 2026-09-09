@@ -35,6 +35,15 @@ func (store *memoryStore) UserByID(_ context.Context, id string) (User, error) {
 	}
 	return store.user, nil
 }
+func (store *memoryStore) GoogleUser(_ context.Context, subject, email string, _ time.Time) (User, error) {
+	if subject == "" || email == "" {
+		return User{}, ErrInvalidLogin
+	}
+	if store.user.ID == "" {
+		store.user = User{ID: "user-1", Identifier: email, Role: RoleUser, CreatedAt: time.Unix(100, 0).UTC()}
+	}
+	return store.user, nil
+}
 func (store *memoryStore) CreateSession(_ context.Context, _ string, digest []byte, _ time.Time) error {
 	store.digest = append([]byte(nil), digest...)
 	return nil

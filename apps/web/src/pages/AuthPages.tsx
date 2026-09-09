@@ -3,11 +3,11 @@ import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, UserPlus }
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 
 import { BrandMark } from '../components/brand-mark'
-import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, PageContainer, PageHeader } from '../components/ui'
+import { Button, Card, Checkbox, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, buttonVariants } from '../components/ui'
 import { ApiError } from '../api/client'
 import { useAuth } from '../features/auth/auth-state'
 
@@ -22,6 +22,10 @@ function AuthLayout({ children, description, title }: { children: ReactNode; des
       <div className="mx-auto max-w-lg"><div className="mb-8 flex justify-center"><BrandMark /></div><Card elevated className="p-5 md:p-8"><h1 className="text-page-mobile font-semibold tracking-tight md:text-page">{title}</h1><p className="mt-3 text-caption text-text-secondary">{description}</p><div className="mt-7">{children}</div></Card></div>
     </PageContainer>
   )
+}
+
+function GoogleSignInLink() {
+  return <a className={buttonVariants({ variant: 'secondary', className: 'w-full' })} href="/api/v1/auth/google/start"><span aria-hidden="true" className="text-card font-bold">G</span>Continue with Google</a>
 }
 
 export function LoginPage() {
@@ -50,6 +54,8 @@ export function LoginPage() {
         {serverError && <Notice announce title="Sign in failed" tone="error">{serverError}</Notice>}
         <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/forgot-password" className="min-h-11 py-3 text-caption font-semibold text-brand">Forgot password?</Link><Button disabled={isSubmitting} type="submit">{isSubmitting ? 'Signing in…' : 'Sign in'} <ArrowRight aria-hidden="true" className="size-4" /></Button></div>
       </form>
+      <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border" /><span className="text-label text-text-secondary">or</span><span className="h-px flex-1 bg-border" /></div>
+      <GoogleSignInLink />
       <p className="mt-6 text-center text-caption text-text-secondary">Need an account? <Link className="font-semibold text-brand" to="/register">Create one</Link></p>
     </AuthLayout>
   )
@@ -80,9 +86,22 @@ export function RegisterPage() {
         {serverError && <Notice announce title="Registration failed" tone="error">{serverError}</Notice>}
         <Button className="w-full" disabled={isSubmitting} type="submit"><UserPlus aria-hidden="true" className="size-4" />{isSubmitting ? 'Creating account…' : 'Create account'}</Button>
       </form>
+      <div className="my-6 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-border" /><span className="text-label text-text-secondary">or</span><span className="h-px flex-1 bg-border" /></div>
+      <GoogleSignInLink />
       <p className="mt-6 text-center text-caption text-text-secondary">Already registered? <Link className="font-semibold text-brand" to="/login">Sign in</Link></p>
     </AuthLayout>
   )
+}
+
+export function GoogleAuthCallbackPage() {
+  const [searchParams] = useSearchParams()
+  const { isLoading, user } = useAuth()
+  if (searchParams.has('error')) {
+    return <AuthLayout title="Google sign-in failed" description="The Google identity response could not be verified."><Notice announce title="Authentication failed" tone="error">Try again from the sign-in page. No Google token was stored.</Notice><Link className={buttonVariants({ variant: 'secondary', className: 'mt-5 w-full' })} to="/login">Back to sign in</Link></AuthLayout>
+  }
+  if (isLoading) return <AuthLayout title="Completing sign-in" description="LostLink is creating your local session."><LoadingState label="Verifying your session" /></AuthLayout>
+  if (user) return <Navigate to="/profile" replace />
+  return <AuthLayout title="Google sign-in failed" description="A local session could not be created."><Notice announce title="Authentication failed" tone="error">Try again from the sign-in page.</Notice></AuthLayout>
 }
 
 export function ForgotPasswordPage() {

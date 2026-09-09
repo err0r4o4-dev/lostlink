@@ -13,9 +13,13 @@ import (
 )
 
 func testAuthRouter(service *Service) http.Handler {
+	return testAuthRouterWithGoogle(service, nil)
+}
+
+func testAuthRouterWithGoogle(service *Service, googleOAuth *GoogleOAuth) http.Handler {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	RegisterRoutes(router.Group("/v1/auth"), service, "http://localhost:8088", false)
+	RegisterRoutes(router.Group("/v1/auth"), service, "http://localhost:8088", false, googleOAuth)
 	return router
 }
 
@@ -113,5 +117,15 @@ func TestAuthLimitsLoginAttemptsAndRequestSize(t *testing.T) {
 	response := authRequest(t, router, http.MethodPost, "/v1/auth/register", oversized, "http://localhost:8088")
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("oversized status = %d; want 400", response.Code)
+	}
+}
+
+func TestGoogleStartIsUnavailableWithoutConfiguration(t *testing.T) {
+	response := authRequest(t, testAuthRouter(newTestService(new(memoryStore))), http.MethodGet, "/v1/auth/google/start", "", "")
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("Google start status = %d; want 503", response.Code)
+	}
+	if !strings.Contains(response.Body.String(), "google_oauth_unavailable") {
+		t.Fatalf("Google start body = %s", response.Body.String())
 	}
 }

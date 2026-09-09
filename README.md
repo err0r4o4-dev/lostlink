@@ -66,7 +66,7 @@ Implemented:
 - React application shell with a project-foundation landing page
 - Shared React Query provider, React Router setup, and typed HTTP client foundation
 - Go API process health endpoint and Scalar API Reference
-- Account registration/login, Argon2id password hashing, short-lived JWT access tokens, rotating refresh sessions, logout, current-user lookup, and centralized role middleware
+- Account registration/password login, Google OpenID Connect with PKCE, Argon2id password hashing, short-lived JWT access tokens, rotating refresh sessions, logout, current-user lookup, and centralized role middleware
 - Idempotent authenticated lost/found report creation plus public-safe search and detail responses
 - Go configuration, PostgreSQL connection, readable privacy-minimized request logs, structured lifecycle logs, and graceful shutdown foundations
 - Internal FastAPI process health endpoint with public OpenAPI pages disabled
@@ -345,6 +345,7 @@ The authoritative local template is [`.env.example`](.env.example).
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET` | Future Go storage target | Wired into Compose; product storage is not implemented |
 | `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_USE_SSL` | Future Go storage access | Wired into Compose; product storage is not implemented |
 | `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `JWT_SIGNING_KEY` | Access/refresh session configuration | Used; replace the local signing-key placeholder before shared or production use |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URL` | Optional Google OpenID Connect web client | Configure all three together; redirect URL must exactly match Google Cloud |
 
 Never commit `.env`, real credentials, tokens, keys, or production connection strings.
 
@@ -360,6 +361,8 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 | `POST http://localhost:8088/api/v1/auth/refresh` | Rotate the HttpOnly refresh cookie |
 | `POST http://localhost:8088/api/v1/auth/logout` | Revoke the current refresh session |
 | `GET http://localhost:8088/api/v1/auth/me` | Read the bearer-authenticated account |
+| `GET http://localhost:8088/api/v1/auth/google/start` | Start Google sign-in with state, nonce, and PKCE |
+| `GET http://localhost:8088/api/v1/auth/google/callback` | Google redirect target; validates identity and returns to the web callback |
 | `GET/POST http://localhost:8088/api/v1/reports` | Search public-safe reports / create an authenticated report |
 | `GET http://localhost:8088/api/v1/reports/{reportId}` | Read one active public-safe report |
 | `GET http://localhost:8088/api/v1/reports/mine` | List the authenticated account's reports |

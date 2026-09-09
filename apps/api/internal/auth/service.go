@@ -12,6 +12,7 @@ type Store interface {
 	CreateUserWithSession(context.Context, string, string, []byte, time.Time) (User, error)
 	UserByIdentifier(context.Context, string) (User, error)
 	UserByID(context.Context, string) (User, error)
+	GoogleUser(context.Context, string, string, time.Time) (User, error)
 	CreateSession(context.Context, string, []byte, time.Time) error
 	RotateSession(context.Context, []byte, []byte, time.Time, time.Time) (User, error)
 	RevokeSession(context.Context, []byte, time.Time) error
@@ -65,8 +66,27 @@ func (service *Service) Login(ctx context.Context, identifier, password string) 
 	if err != nil {
 		return Session{}, err
 	}
+	if user.PasswordHash == "" {
+		verifyPassword(service.dummyPasswordHash, password)
+		return Session{}, ErrInvalidLogin
+	}
 	if !verifyPassword(user.PasswordHash, password) {
 		return Session{}, ErrInvalidLogin
+	}
+	return service.newSession(ctx, user)
+}
+
+func (service *Service) LoginGoogle(ctx context.Context, subject, email string) (Session, error) {
+	if subject == "" {
+		return Session{}, ErrInvalidLogin
+	}
+	email = normalizeIdentifier(email)
+	if length := utf8.RuneCountInString(email); length < 3 || length > 254 {
+		return Session{}, ErrInvalidLogin
+	}
+	user, err := service.store.GoogleUser(ctx, subject, email, service.tokens.now().UTC())
+	if err != nil {
+		return Session{}, err
 	}
 	return service.newSession(ctx, user)
 }

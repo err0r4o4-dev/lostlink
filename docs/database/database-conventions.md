@@ -11,6 +11,6 @@
 - Validate migration up/down on disposable PostgreSQL. Backups and explicit rollback plans are required before destructive production data work.
 
 Migration `000001_enable_vector` enables pgvector. Later migrations add users,
-rotating refresh sessions, and public-safe text reports. Private verification
+rotating refresh sessions, Google provider identities, and public-safe text reports. Private verification
 evidence and image metadata remain deferred until their access, retention,
 deletion, and audit policies are approved.
