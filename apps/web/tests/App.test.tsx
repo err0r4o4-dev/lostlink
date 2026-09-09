@@ -36,6 +36,8 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    expect(screen.getAllByText('TH').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('EN').length).toBeGreaterThanOrEqual(1)
     await user.click(screen.getAllByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })[0])
 
     expect(screen.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeInTheDocument()

@@ -106,7 +106,9 @@ test('switches between Thai and English next to the notification action', async 
   const thaiLanguageAction = page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })
   await expect(notificationAction).toBeVisible()
   await expect(thaiLanguageAction).toBeVisible()
-  await expect(notificationAction.locator('xpath=following-sibling::*[1]')).toHaveAttribute('aria-label', 'เปลี่ยนภาษาเป็นไทย')
+  await expect(thaiLanguageAction).toContainText('TH')
+  await expect(thaiLanguageAction).toContainText('EN')
+  await expect(thaiLanguageAction.locator('xpath=following-sibling::*[1]')).toHaveAttribute('aria-label', 'Notifications')
 
   await thaiLanguageAction.click()
   await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()

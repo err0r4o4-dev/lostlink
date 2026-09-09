@@ -68,7 +68,6 @@ function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
 
 function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage()
-  const nextLanguage = language === 'en' ? 'TH' : 'EN'
   const label = language === 'en' ? 'เปลี่ยนภาษาเป็นไทย' : 'Switch language to English'
 
   return (
@@ -77,10 +76,18 @@ function LanguageToggle() {
       onClick={toggleLanguage}
       aria-label={label}
       title={label}
-      className="ui-transition flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-control px-2 text-text-secondary hover:bg-brand-soft hover:text-brand"
+      className="ui-transition flex min-h-11 items-center justify-center gap-1 rounded-control border border-border bg-surface p-1 text-text-secondary shadow-card hover:border-brand"
     >
-      <Languages aria-hidden="true" className="size-4" />
-      <span aria-hidden="true" className="text-label font-bold">{nextLanguage}</span>
+      <Languages aria-hidden="true" className="mx-1 size-4 shrink-0" />
+      {(['th', 'en'] as const).map((option) => (
+        <span
+          key={option}
+          aria-hidden="true"
+          className={`ui-transition flex min-h-8 min-w-8 items-center justify-center rounded-small px-2 text-label font-bold ${language === option ? 'bg-brand text-on-brand' : 'text-text-secondary'}`}
+        >
+          {option.toUpperCase()}
+        </span>
+      ))}
     </button>
   )
 }
@@ -93,10 +100,6 @@ export function AppShell() {
         <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-border bg-surface/90 px-6 py-6 lg:flex">
           <BrandMark />
           <nav aria-label="Primary" className="mt-8 grid gap-1"><NavigationLinks /></nav>
-          <div className="mt-6 rounded-card bg-surface-secondary p-5">
-            <Badge variant="brand">Frontend preview</Badge>
-            <p className="mt-3 text-caption text-text-secondary">Every surface is available for review. Server-backed actions remain clearly marked until their API contracts exist.</p>
-          </div>
         </aside>
         <div className="min-w-0">
           <GlassSurface className="safe-area-top sticky top-0 z-navigation rounded-none border-x-0 border-t-0">
@@ -105,7 +108,7 @@ export function AppShell() {
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
               <nav aria-label="Primary" className="hidden items-center gap-1 md:flex lg:hidden"><NavigationLinks compact items={tabletNavigation} /></nav>
               <div className="flex items-center gap-1">
-                <div className="hidden items-center gap-1 md:flex"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /><LanguageToggle /><HeaderAction to="/profile" icon={UserRound} label="Profile" /></div>
+                <div className="hidden items-center gap-1 md:flex"><LanguageToggle /><HeaderAction to="/notifications" icon={Bell} label="Notifications" /><HeaderAction to="/profile" icon={UserRound} label="Profile" /></div>
                 <div className="flex items-center gap-1 md:hidden"><LanguageToggle /><Badge>Preview</Badge></div>
               </div>
             </header>
