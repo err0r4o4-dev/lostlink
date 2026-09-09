@@ -66,7 +66,7 @@ Implemented:
 - React application shell with a project-foundation landing page
 - Shared React Query provider, React Router setup, and typed HTTP client foundation
 - Go API process health endpoint and Scalar API Reference
-- Go configuration, PostgreSQL connection, structured logging, and graceful shutdown foundations
+- Go configuration, PostgreSQL connection, readable privacy-minimized request logs, structured lifecycle logs, and graceful shutdown foundations
 - Internal FastAPI process health endpoint with public OpenAPI pages disabled
 - Initial reversible migration that enables the PostgreSQL `vector` extension
 - Dockerfiles, Docker Compose, Caddy routing, health checks, private backend networking, and persistent development volumes

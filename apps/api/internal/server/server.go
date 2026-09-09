@@ -2,9 +2,9 @@
 package server
 
 import (
-	"log/slog"
+	"fmt"
+	"io"
 	"net/http"
-	"time"
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
 	"github.com/gin-gonic/gin"
@@ -16,9 +16,13 @@ type HealthResponse struct {
 	Service string `json:"service" example:"api"`
 }
 
-func New(logger *slog.Logger) http.Handler {
+func New(requestLogWriter io.Writer) http.Handler {
 	router := gin.New()
-	router.Use(gin.Recovery(), requestLogger(logger))
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Formatter: readableRequestLog,
+		Output:    requestLogWriter,
+		SkipPaths: []string{"/health"},
+	}), gin.Recovery())
 	router.GET("/health", health)
 	docsHTML, docsErr := scalar.ApiReferenceHTML(&scalar.Options{
 		CDN:         "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.63.0",
@@ -58,15 +62,15 @@ func health(c *gin.Context) {
 	c.JSON(http.StatusOK, HealthResponse{Status: "ok", Service: "api"})
 }
 
-func requestLogger(logger *slog.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		started := time.Now()
-		c.Next()
-		logger.Info("http request",
-			"method", c.Request.Method,
-			"path", c.FullPath(),
-			"status", c.Writer.Status(),
-			"duration_ms", time.Since(started).Milliseconds(),
-		)
-	}
+func readableRequestLog(param gin.LogFormatterParams) string {
+	// Deliberately omit RawQuery: LostLink search terms and opaque references may
+	// contain private data that must not be retained in routine access logs.
+	return fmt.Sprintf("[GIN] %s | %3d | %13v | %15s | %-7s %q\n",
+		param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+		param.StatusCode,
+		param.Latency,
+		param.ClientIP,
+		param.Method,
+		param.Request.URL.Path,
+	)
 }
