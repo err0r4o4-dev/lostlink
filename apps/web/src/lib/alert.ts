@@ -4,11 +4,12 @@ import withReactContent from 'sweetalert2-react-content'
 const MySwal = withReactContent(Swal)
 
 const customClass = {
-  popup: 'glass-panel !rounded-[2rem] !text-text-primary !border-2 !border-white/50 !shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] backdrop-blur-xl',
-  title: '!text-section !font-bold !text-text-primary',
-  htmlContainer: '!text-body !text-text-secondary !font-medium',
-  confirmButton: 'ui-transition pressable !rounded-full !bg-brand !px-8 !py-3 !font-semibold !text-on-brand hover:!bg-brand-hover !shadow-lg',
-  cancelButton: 'ui-transition pressable !rounded-full !bg-surface-secondary !px-8 !py-3 !font-semibold !text-text-secondary hover:!bg-brand-soft hover:!text-brand !ml-3 !shadow-sm',
+  popup: 'kg-swal-popup',
+  title: 'kg-swal-title',
+  htmlContainer: 'kg-swal-text',
+  actions: 'kg-swal-actions',
+  confirmButton: 'kg-swal-button kg-swal-button-primary',
+  cancelButton: 'kg-swal-button kg-swal-button-secondary',
 }
 
 const baseOptions = {
@@ -62,7 +63,7 @@ export const showAlert = {
       cancelButtonText: cancelText,
       customClass: {
         ...customClass,
-        confirmButton: 'ui-transition pressable !rounded-full !bg-brand !px-8 !py-3 !font-semibold !text-on-brand hover:!bg-brand-hover !shadow-lg',
+        confirmButton: 'kg-swal-button kg-swal-button-primary',
       }
     })
     return result.isConfirmed
@@ -80,7 +81,7 @@ export const showAlert = {
       cancelButtonText: cancelText,
       customClass: {
         ...customClass,
-        confirmButton: 'ui-transition pressable !rounded-full !bg-error !px-8 !py-3 !font-semibold !text-white hover:!bg-error-strong !shadow-lg',
+        confirmButton: 'kg-swal-button kg-swal-button-danger',
       }
     })
     return result.isConfirmed
