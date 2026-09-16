@@ -57,11 +57,10 @@ export function ReportForm({ reportType }: ReportFormProps) {
         approximate_location: reviewValues.location,
       }, accessToken, idempotencyKey)
       setCreated(response.report)
-      showAlert.success('ส่งรายงานเรียบร้อย', 'ข้อมูลของคุณถูกบันทึกเข้าระบบแล้ว')
+      void showAlert.success('ส่งรายงานเรียบร้อย', 'ข้อมูลของคุณถูกบันทึกเข้าระบบแล้ว')
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
       setSubmitError(errorMessage)
-      showAlert.error('ส่งรายงานไม่สำเร็จ', errorMessage)
     } finally {
       setIsSubmitting(false)
     }
