@@ -10,6 +10,7 @@ import { BrandMark } from '../components/brand-mark'
 import { Button, Card, Checkbox, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, buttonVariants } from '../components/ui'
 import { ApiError } from '../api/client'
 import { useAuth } from '../features/auth/auth-state'
+import { showAlert } from '../lib/alert'
 
 const identifierSchema = z.object({ identifier: z.string().trim().min(3, 'Use at least 3 characters.').max(254, 'Keep the identifier under 255 characters.') })
 const loginSchema = identifierSchema.extend({ password: z.string().min(1, 'Enter your password.') })
@@ -39,10 +40,13 @@ export function LoginPage() {
     setServerError(undefined)
     try {
       await authenticate('login', values)
+      showAlert.success('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับกลับมา')
       const requested = (location.state as { from?: string } | null)?.from
       void navigate(requested?.startsWith('/') ? requested : '/profile', { replace: true })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : 'Sign in is temporarily unavailable.')
+      const errorMessage = error instanceof ApiError ? error.message : 'Sign in is temporarily unavailable.'
+      showAlert.error('เข้าสู่ระบบไม่สำเร็จ', errorMessage)
+      setServerError(errorMessage)
     }
   })
   return (
@@ -71,9 +75,12 @@ export function RegisterPage() {
     setServerError(undefined)
     try {
       await authenticate('register', { identifier: values.identifier, password: values.password })
+      showAlert.success('สมัครสมาชิกสำเร็จ', 'บัญชีของคุณถูกสร้างเรียบร้อยแล้ว')
       void navigate('/onboarding', { replace: true })
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : 'Registration is temporarily unavailable.')
+      const errorMessage = error instanceof ApiError ? error.message : 'Registration is temporarily unavailable.'
+      showAlert.error('สมัครสมาชิกไม่สำเร็จ', errorMessage)
+      setServerError(errorMessage)
     }
   })
   return (
@@ -107,13 +114,21 @@ export function GoogleAuthCallbackPage() {
 export function ForgotPasswordPage() {
   const [attempted, setAttempted] = useState(false)
   const { formState: { errors }, handleSubmit, register } = useForm<z.infer<typeof identifierSchema>>({ resolver: zodResolver(identifierSchema) })
-  return <AuthLayout title="Recover account access" description="Recovery responses remain generic so the interface does not reveal whether an account exists."><form className="space-y-5" onSubmit={(event) => void handleSubmit(() => setAttempted(true))(event)} noValidate><Input label="University email or account identifier" autoComplete="username" required error={errors.identifier?.message} {...register('identifier')} /><Button className="w-full" type="submit"><KeyRound aria-hidden="true" className="size-4" />Request recovery</Button></form>{attempted && <div className="mt-5"><IntegrationNotice announce capability="Rate-limited account recovery and secure delivery" /></div>}<p className="mt-6 text-center"><Link className="text-caption font-semibold text-brand" to="/login">Back to sign in</Link></p></AuthLayout>
+  const submit = handleSubmit(() => {
+    setAttempted(true)
+    showAlert.info('ส่งลิงก์สำเร็จ', 'หากมีอีเมลนี้ในระบบ เราได้ส่งลิงก์กู้คืนไปให้แล้ว')
+  })
+  return <AuthLayout title="Recover account access" description="Recovery responses remain generic so the interface does not reveal whether an account exists."><form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate><Input label="University email or account identifier" autoComplete="username" required error={errors.identifier?.message} {...register('identifier')} /><Button className="w-full" type="submit"><KeyRound aria-hidden="true" className="size-4" />Request recovery</Button></form>{attempted && <div className="mt-5"><IntegrationNotice announce capability="Rate-limited account recovery and secure delivery" /></div>}<p className="mt-6 text-center"><Link className="text-caption font-semibold text-brand" to="/login">Back to sign in</Link></p></AuthLayout>
 }
 
 export function ResetPasswordPage() {
   const [attempted, setAttempted] = useState(false)
   const { formState: { errors }, handleSubmit, register } = useForm<z.infer<typeof resetSchema>>({ resolver: zodResolver(resetSchema) })
-  return <AuthLayout title="Set a new password" description="A server-validated recovery token is required before any credential can change."><form className="space-y-5" onSubmit={(event) => void handleSubmit(() => setAttempted(true))(event)} noValidate><Input label="Recovery token" autoComplete="one-time-code" required error={errors.token?.message} {...register('token')} /><Input label="New password" type="password" autoComplete="new-password" required error={errors.password?.message} {...register('password')} /><Input label="Confirm new password" type="password" autoComplete="new-password" required error={errors.confirmPassword?.message} {...register('confirmPassword')} /><Button className="w-full" type="submit"><LockKeyhole aria-hidden="true" className="size-4" />Review password reset</Button></form>{attempted && <div className="mt-5"><IntegrationNotice announce capability="Recovery-token validation, password update, and session revocation" /></div>}</AuthLayout>
+  const submit = handleSubmit(() => {
+    setAttempted(true)
+    showAlert.success('ตรวจสอบสำเร็จ', 'กำลังจำลองการรีเซ็ตรหัสผ่าน')
+  })
+  return <AuthLayout title="Set a new password" description="A server-validated recovery token is required before any credential can change."><form className="space-y-5" onSubmit={(event) => void submit(event)} noValidate><Input label="Recovery token" autoComplete="one-time-code" required error={errors.token?.message} {...register('token')} /><Input label="New password" type="password" autoComplete="new-password" required error={errors.password?.message} {...register('password')} /><Input label="Confirm new password" type="password" autoComplete="new-password" required error={errors.confirmPassword?.message} {...register('confirmPassword')} /><Button className="w-full" type="submit"><LockKeyhole aria-hidden="true" className="size-4" />Review password reset</Button></form>{attempted && <div className="mt-5"><IntegrationNotice announce capability="Recovery-token validation, password update, and session revocation" /></div>}</AuthLayout>
 }
 
 export function OnboardingPage() {
