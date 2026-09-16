@@ -91,7 +91,9 @@ authority, contract, dependency, or handoff.
 
 ## Minimum-Skill Principle
 
-Do not load every available skill. For each task, read the two core
+Do not load every available skill. Do not load full `SKILL.md` files speculatively. Rely on the skill's description field first. Load a skill's full markdown content only when you are actively executing a task in that specific domain.
+
+For each task, read the two core
 project/scope skills, classify the domain, add
 only relevant implementation or design skills, and add testing, accessibility,
 security, or review skills only when their triggers apply. Avoid unrelated
