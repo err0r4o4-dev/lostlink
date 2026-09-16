@@ -3,7 +3,6 @@ import withReactContent from 'sweetalert2-react-content'
 
 const MySwal = withReactContent(Swal)
 
-// Custom styles matching the design system
 const customClass = {
   popup: 'rounded-overlay glass-panel !bg-surface !text-text-primary !border !border-border shadow-floating',
   title: '!text-section !font-bold !text-text-primary',
@@ -21,9 +20,6 @@ const baseOptions = {
 }
 
 export const showAlert = {
-  /**
-   * แจ้งเตือนเมื่อทำสำเร็จ
-   */
   success: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -34,9 +30,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนข้อผิดพลาด
-   */
   error: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -47,9 +40,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนทั่วไป (Info)
-   */
   info: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -60,9 +50,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนสำหรับยืนยันการทำรายการบางอย่าง
-   */
   confirm: async (title: string, text?: string, confirmText = 'ยืนยัน', cancelText = 'ยกเลิก') => {
     const result = await MySwal.fire({
       ...baseOptions,
@@ -81,9 +68,6 @@ export const showAlert = {
     return result.isConfirmed
   },
 
-  /**
-   * แจ้งเตือนสำหรับยืนยันการลบ (ปุ่มกดยืนยันจะเป็นสีแดง)
-   */
   confirmDestructive: async (title: string, text?: string, confirmText = 'ลบข้อมูล', cancelText = 'ยกเลิก') => {
     const result = await MySwal.fire({
       ...baseOptions,
