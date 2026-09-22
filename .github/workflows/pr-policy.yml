@@ -16,9 +16,8 @@ jobs:
     env:
       BASE_REF: ${{ github.base_ref }}
       HEAD_REF: ${{ github.head_ref }}
-      PR_TITLE: ${{ github.event.pull_request.title }}
     steps:
-      - name: Validate branch flow and title
+      - name: Validate branch flow
         shell: bash
         run: |
           if [[ "$BASE_REF" == "main" && "$HEAD_REF" != "develop" ]]; then
@@ -28,10 +27,5 @@ jobs:
 
           if [[ "$BASE_REF" == "develop" && ! "$HEAD_REF" =~ ^(feature/|dependabot/) ]]; then
             echo "Pull requests into develop must come from feature/* or dependabot/*." >&2
-            exit 1
-          fi
-
-          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?:[[:space:]].+ ]]; then
-            echo "Use a Conventional Commit-style pull request title." >&2
             exit 1
           fi

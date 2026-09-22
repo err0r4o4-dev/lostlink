@@ -1,10 +1,10 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, createHashRouter, type RouteObject } from 'react-router-dom'
 
 import { AppShell } from '../layouts/AppShell'
 import { HomePage } from '../pages/HomePage'
 import { RequireAuth, RequireStaff } from '../features/auth/route-guards'
 
-export const router = createBrowserRouter([
+const routes = [
   {
     path: '/',
     element: <AppShell />,
@@ -49,4 +49,8 @@ export const router = createBrowserRouter([
   { path: '/forgot-password', lazy: async () => ({ Component: (await import('../pages/AuthPages')).ForgotPasswordPage }) },
   { path: '/reset-password', lazy: async () => ({ Component: (await import('../pages/AuthPages')).ResetPasswordPage }) },
   { path: '/auth/callback', lazy: async () => ({ Component: (await import('../pages/AuthPages')).GoogleAuthCallbackPage }) },
-])
+] satisfies RouteObject[]
+
+export const router = import.meta.env.VITE_ROUTER_MODE === 'hash'
+  ? createHashRouter(routes)
+  : createBrowserRouter(routes)
