@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import process from 'node:process'
 
 test.skip(process.env.VITE_ROUTER_MODE !== 'hash', 'Runs only against the PR preview router.')
 
