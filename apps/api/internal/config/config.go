@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,6 +26,13 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	AIServiceURL       string
+	AIServiceToken     string
+	StorageEndpoint    string
+	StorageBucket      string
+	StorageAccessKey   string
+	StorageSecretKey   string
+	StorageUseSSL      bool
 }
 
 func Load() (Config, error) {
@@ -38,6 +47,12 @@ func Load() (Config, error) {
 		GoogleClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		GoogleRedirectURL:  os.Getenv("GOOGLE_OAUTH_REDIRECT_URL"),
+		AIServiceURL:       valueOrDefault("AI_SERVICE_URL", "http://localhost:8000"),
+		AIServiceToken:     valueOrDefault("AI_SERVICE_TOKEN", "replace-me-internal-service-token"),
+		StorageEndpoint:    os.Getenv("STORAGE_ENDPOINT"),
+		StorageBucket:      os.Getenv("STORAGE_BUCKET"),
+		StorageAccessKey:   os.Getenv("STORAGE_ACCESS_KEY"),
+		StorageSecretKey:   os.Getenv("STORAGE_SECRET_KEY"),
 	}
 
 	if cfg.Environment == "" {
@@ -76,6 +91,31 @@ func Load() (Config, error) {
 		if cfg.Environment == "production" && redirect.Scheme != "https" {
 			return Config{}, fmt.Errorf("GOOGLE_OAUTH_REDIRECT_URL must use HTTPS in production")
 		}
+	}
+	aiURL, err := url.ParseRequestURI(cfg.AIServiceURL)
+	if err != nil || aiURL.Host == "" || (aiURL.Scheme != "http" && aiURL.Scheme != "https") || aiURL.User != nil || aiURL.RawQuery != "" || aiURL.Fragment != "" {
+		return Config{}, fmt.Errorf("AI_SERVICE_URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
+	}
+	if len(cfg.AIServiceToken) < 24 {
+		return Config{}, fmt.Errorf("AI_SERVICE_TOKEN must contain at least 24 bytes")
+	}
+	if cfg.Environment == "production" && cfg.AIServiceToken == "replace-me-internal-service-token" {
+		return Config{}, fmt.Errorf("AI_SERVICE_TOKEN placeholder is forbidden in production")
+	}
+	storageValues := 0
+	for _, value := range []string{cfg.StorageEndpoint, cfg.StorageBucket, cfg.StorageAccessKey, cfg.StorageSecretKey} {
+		if value != "" {
+			storageValues++
+		}
+	}
+	if storageValues != 0 && storageValues != 4 {
+		return Config{}, fmt.Errorf("STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY, and STORAGE_SECRET_KEY must be configured together")
+	}
+	if strings.Contains(cfg.StorageEndpoint, "://") {
+		return Config{}, fmt.Errorf("STORAGE_ENDPOINT must be host:port without a URL scheme")
+	}
+	if cfg.StorageUseSSL, err = strconv.ParseBool(valueOrDefault("STORAGE_USE_SSL", "false")); err != nil {
+		return Config{}, fmt.Errorf("STORAGE_USE_SSL must be true or false")
 	}
 
 	return cfg, nil

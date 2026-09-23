@@ -15,6 +15,13 @@ func setValidAuthEnvironment(t *testing.T) {
 	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "")
 	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 	t.Setenv("GOOGLE_OAUTH_REDIRECT_URL", "")
+	t.Setenv("AI_SERVICE_URL", "http://localhost:8000")
+	t.Setenv("AI_SERVICE_TOKEN", "test-internal-service-token-value")
+	t.Setenv("STORAGE_ENDPOINT", "")
+	t.Setenv("STORAGE_BUCKET", "")
+	t.Setenv("STORAGE_ACCESS_KEY", "")
+	t.Setenv("STORAGE_SECRET_KEY", "")
+	t.Setenv("STORAGE_USE_SSL", "false")
 }
 
 func TestLoadAcceptsValidAuthConfiguration(t *testing.T) {
@@ -115,5 +122,37 @@ func TestLoadRequiresHTTPSGoogleCallbackInProduction(t *testing.T) {
 
 	if _, err := Load(); err == nil {
 		t.Fatal("Load() expected an error for a non-HTTPS production callback")
+	}
+}
+
+func TestLoadRejectsShortAIServiceToken(t *testing.T) {
+	setValidAuthEnvironment(t)
+	t.Setenv("AI_SERVICE_TOKEN", "too-short")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() expected an error for a short AI service token")
+	}
+}
+
+func TestLoadRejectsPartialStorageConfiguration(t *testing.T) {
+	setValidAuthEnvironment(t)
+	t.Setenv("STORAGE_ENDPOINT", "localhost:9000")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() expected an error for partial storage configuration")
+	}
+}
+
+func TestLoadAcceptsCompleteStorageConfiguration(t *testing.T) {
+	setValidAuthEnvironment(t)
+	t.Setenv("STORAGE_ENDPOINT", "localhost:9000")
+	t.Setenv("STORAGE_BUCKET", "lostlink-test")
+	t.Setenv("STORAGE_ACCESS_KEY", "access-key")
+	t.Setenv("STORAGE_SECRET_KEY", "secret-key")
+	t.Setenv("STORAGE_USE_SSL", "true")
+
+	cfg, err := Load()
+	if err != nil || !cfg.StorageUseSSL || cfg.StorageBucket != "lostlink-test" {
+		t.Fatalf("Load() storage config = %#v, %v", cfg, err)
 	}
 }

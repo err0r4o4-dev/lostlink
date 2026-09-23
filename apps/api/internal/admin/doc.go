@@ -1,2 +1,2 @@
-// Package admin is reserved for staff-only application behavior.
+// Package admin exposes aggregate staff operations and restricted audit history.
 package admin

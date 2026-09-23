@@ -24,7 +24,17 @@ func TestOpenAPIYAML(t *testing.T) {
 	if document.Info.Title != "LostLink API" {
 		t.Fatalf("info.title = %q; want LostLink API", document.Info.Title)
 	}
-	if _, ok := document.Paths["/health"]; !ok {
-		t.Fatal("OpenAPI document does not define /health")
+	for _, path := range []string{
+		"/health",
+		"/v1/reports/{reportId}/matching-runs",
+		"/v1/claims",
+		"/v1/tracking/{reference}",
+		"/v1/notifications",
+		"/v1/staff/claims/{claimId}/decisions",
+		"/v1/staff/return-arrangements/{returnId}/close",
+	} {
+		if _, ok := document.Paths[path]; !ok {
+			t.Fatalf("OpenAPI document does not define %s", path)
+		}
 	}
 }

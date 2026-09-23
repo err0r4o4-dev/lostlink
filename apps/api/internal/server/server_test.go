@@ -8,6 +8,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/notification"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
 )
 
 func TestHealth(t *testing.T) {
@@ -67,7 +75,7 @@ func TestOpenAPIDocumentRouteExists(t *testing.T) {
 	if contentType := recorder.Header().Get("Content-Type"); !strings.Contains(contentType, "application/yaml") {
 		t.Fatalf("Content-Type = %q; want application/yaml", contentType)
 	}
-	for _, expected := range []string{"openapi: 3.1.0", "    # Introduction", "  /health:", "  /v1/auth/login:", "    HealthResponse:", "    BearerAuth:"} {
+	for _, expected := range []string{"openapi: 3.1.0", "    # Introduction", "  /health:", "  /v1/auth/login:", "  /v1/claims:", "  /v1/staff/return-arrangements/{returnId}/close:", "    HealthResponse:", "    BearerAuth:"} {
 		if !strings.Contains(recorder.Body.String(), expected) {
 			t.Fatalf("OpenAPI document does not contain %q", expected)
 		}
@@ -90,6 +98,37 @@ func TestReadableRequestLogOmitsQueryValues(t *testing.T) {
 	for _, privateValue := range []string{"status=ALL", "private=evidence"} {
 		if strings.Contains(output, privateValue) {
 			t.Fatalf("request log contains query value %q", privateValue)
+		}
+	}
+}
+
+func TestLifecycleRoutesRegisterWithoutConflicts(t *testing.T) {
+	authService := new(auth.Service)
+	handler := New(io.Discard, Options{
+		Auth:          authService,
+		Reports:       report.NewService(nil),
+		Matching:      matching.NewService(nil, nil),
+		Claims:        claim.NewService(nil),
+		Tracking:      tracking.NewService(nil),
+		Notifications: notification.NewService(nil),
+		Admin:         admin.NewRepository(nil),
+	})
+
+	for _, test := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/v1/reports/11111111-1111-4111-8111-111111111111/matching-runs"},
+		{http.MethodPost, "/v1/claims"},
+		{http.MethodGet, "/v1/tracking/11111111-1111-4111-8111-111111111111"},
+		{http.MethodGet, "/v1/notifications"},
+		{http.MethodGet, "/v1/staff/dashboard"},
+	} {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(test.method, test.path, nil)
+		handler.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusUnauthorized {
+			t.Fatalf("%s %s status = %d; want 401", test.method, test.path, recorder.Code)
 		}
 	}
 }

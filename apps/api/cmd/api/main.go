@@ -11,11 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/database"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/notification"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/server"
+	objectstorage "github.com/err0r4o4-dev/lostlink/apps/api/internal/storage"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
 )
 
 func main() {
@@ -40,18 +46,56 @@ func main() {
 
 	var authService *auth.Service
 	var reportService *report.Service
+	var matchingService *matching.Service
+	var claimService *claim.Service
+	var trackingService *tracking.Service
+	var notificationService *notification.Service
+	var adminRepository *admin.Repository
 	var googleOAuth *auth.GoogleOAuth
 	if pool != nil {
+		var objects objectstorage.Store
+		if cfg.StorageEndpoint != "" {
+			storageClient, err := objectstorage.NewS3Store(
+				cfg.StorageEndpoint, cfg.StorageBucket, cfg.StorageAccessKey, cfg.StorageSecretKey, cfg.StorageUseSSL,
+			)
+			if err != nil {
+				logger.Error("object storage configuration failed", "error", err)
+				os.Exit(1)
+			}
+			storageCtx, cancel := context.WithTimeout(rootCtx, 5*time.Second)
+			if err := storageClient.EnsureBucket(storageCtx); err != nil {
+				cancel()
+				logger.Error("object storage initialization failed", "error", err)
+				os.Exit(1)
+			}
+			cleaned, failed, cleanupErr := objectstorage.ProcessCleanup(storageCtx, pool, storageClient, 100)
+			if cleanupErr != nil || failed > 0 {
+				logger.Warn("object cleanup retry incomplete", "cleaned", cleaned, "failed", failed, "error", cleanupErr)
+			} else if cleaned > 0 {
+				logger.Info("object cleanup retry completed", "cleaned", cleaned)
+			}
+			cancel()
+			objects = storageClient
+		}
 		authService = auth.NewService(auth.NewRepository(pool), auth.NewTokenManager(
 			cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.RefreshTTL,
 		))
-		reportService = report.NewService(report.NewRepository(pool))
+		reportService = report.NewService(report.NewRepository(pool), objects)
+		matchingService = matching.NewService(matching.NewRepository(pool), matching.NewAIClient(cfg.AIServiceURL, cfg.AIServiceToken))
+		claimService = claim.NewService(claim.NewRepository(pool), objects)
+		trackingService = tracking.NewService(tracking.NewRepository(pool))
+		notificationService = notification.NewService(notification.NewRepository(pool))
+		adminRepository = admin.NewRepository(pool)
 		googleOAuth = auth.NewGoogleOAuth(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)
 	}
 
 	httpServer := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           server.New(os.Stdout, server.Options{Auth: authService, Reports: reportService, WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth}),
+		Addr: ":" + cfg.Port,
+		Handler: server.New(os.Stdout, server.Options{
+			Auth: authService, Reports: reportService, Matching: matchingService, Claims: claimService,
+			Tracking: trackingService, Notifications: notificationService, Admin: adminRepository,
+			WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth,
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

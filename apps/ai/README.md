@@ -1,6 +1,15 @@
 # LostLink AI service
 
-This internal FastAPI service currently exposes only `GET /health`. Embedding, ranking, explainability, and evaluation modules are reserved for later `AI-xx` tasks. The optional `ml` dependency group is deliberately excluded from bootstrap installs so model weights and heavyweight runtimes are not downloaded.
+This internal FastAPI service exposes `GET /health` and authenticated
+`POST /internal/v1/embeddings`. The embedding endpoint accepts bounded
+public-safe text selected by Go and returns versioned deterministic baseline
+vectors. Set the same `AI_SERVICE_TOKEN` in Go and this service; callers send it
+as `X-LostLink-Service-Token`.
+
+The optional `ml` dependency group remains excluded from the default install,
+so model weights and heavyweight runtimes are not downloaded. The current
+baseline exercises the integration and pgvector retrieval boundary but is not a
+production semantic or multimodal model.
 
 ```bash
 python -m pip install -e ".[dev]"

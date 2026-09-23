@@ -24,6 +24,16 @@ The AI service is separately deployed because Python/ML dependencies and compute
 - Python: embedding, candidate scoring, ranking, explainability summaries, and offline evaluation.
 - React: presentation and interaction only; client-side roles are not authorization.
 
-## Bootstrap state
+## Implemented lifecycle
 
-Health, Swagger, local account authentication, refresh-session rotation, role middleware, and public-safe text report discovery are implemented alongside the development infrastructure. Image storage and later product workflows remain deferred.
+The Go API now owns report editing/withdrawal, sanitized report images, versioned
+matching runs, private claims and evidence, staff verification decisions, return
+arrangements, tracking events, notifications, moderation, and audit events. The
+browser continues to call only Go. Go stores private objects in MinIO/S3 and
+calls the internal AI service with public-safe report text through an
+authenticated, bounded contract.
+
+The current matching model is a deterministic 32-dimensional bootstrap
+baseline. It exercises the privacy, persistence, versioning, pgvector, degraded
+failure, and review boundaries without downloading model weights. It is not a
+production semantic model and cannot approve claims.

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LostLink API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     # Introduction
     Public REST API for the LostLink university Lost & Found platform. The Go
@@ -9,9 +9,10 @@ info:
     proves ownership.
 
     # Current scope
-    Health, authentication, public-safe lost/found reports, and report search
-    are implemented. Images, matching, claims, verification, tracking,
-    notifications, and staff workflows remain pending.
+    Health, authentication, report lifecycle and images, matching, claims,
+    verification decisions, return tracking, notifications, and staff review
+    are implemented. Matching is an uncertain discovery aid and cannot approve
+    a claim.
 
     # Authentication
     Access tokens are short-lived JWT bearer tokens. Refresh tokens are opaque,
@@ -30,6 +31,18 @@ tags:
     description: Account and session lifecycle
   - name: Reports
     description: Public-safe lost and found reporting and discovery
+  - name: Matching
+    description: Authorized public-safe similarity results; never ownership proof
+  - name: Claims
+    description: Restricted ownership claims and evidence
+  - name: Tracking
+    description: Authorized return arrangements and timelines
+  - name: Notifications
+    description: Authenticated in-app workflow updates
+  - name: Staff
+    description: Staff and admin review operations
+  - name: Admin
+    description: Admin-only audit history
 paths:
   /health:
     get:
@@ -281,6 +294,615 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
+    patch:
+      tags: [Reports]
+      operationId: updateReport
+      summary: Update an active report owned by the authenticated user
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateReportRequest" }
+      responses:
+        "200": { description: Report updated, content: { application/json: { schema: { $ref: "#/components/schemas/ReportEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/reports/{reportId}/withdraw:
+    post:
+      tags: [Reports]
+      operationId: withdrawReport
+      summary: Withdraw an active owned report
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Report withdrawn, content: { application/json: { schema: { $ref: "#/components/schemas/ReportEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/reports/{reportId}/images:
+    get:
+      tags: [Reports]
+      operationId: listReportImages
+      summary: List public-safe images for an active report
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Report images
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [images]
+                properties:
+                  images: { type: array, items: { $ref: "#/components/schemas/ReportImage" } }
+                additionalProperties: false
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Reports]
+      operationId: uploadReportImage
+      summary: Upload and sanitize an image for an active owned report
+      description: Accepts JPEG or PNG only, up to 8 MiB after sanitization and five images per report.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image: { type: string, format: binary }
+      responses:
+        "201":
+          description: Sanitized image stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportImageEnvelope" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/reports/{reportId}/images/{imageId}:
+    get:
+      tags: [Reports]
+      operationId: getReportImageContent
+      summary: Stream a public-safe report image
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: imageId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: JPEG or PNG image bytes
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    delete:
+      tags: [Reports]
+      operationId: deleteReportImage
+      summary: Delete an image from an active owned report
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: imageId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Image deleted }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/reports/{reportId}/matching-runs:
+    post:
+      tags: [Matching]
+      operationId: runReportMatching
+      summary: Generate versioned potential matches for an owned lost report
+      description: Uses public-safe fields only. A score never verifies ownership or approves a claim.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "201":
+          description: Matching run completed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchingRunEnvelope" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "429":
+          description: More than five new matching runs were requested by the account within one minute
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/reports/{reportId}/matches:
+    get:
+      tags: [Matching]
+      operationId: listReportMatches
+      summary: List potential matches visible to the report owner or staff
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Ranked public-safe candidates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches: { type: array, items: { $ref: "#/components/schemas/Match" } }
+                additionalProperties: false
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/matches/{matchId}:
+    get:
+      tags: [Matching]
+      operationId: getMatch
+      summary: Get one authorized potential match
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: matchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Potential match, content: { application/json: { schema: { $ref: "#/components/schemas/MatchEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/claims:
+    post:
+      tags: [Claims]
+      operationId: createClaim
+      summary: Create a private draft claim from an authorized match
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_id]
+              properties:
+                match_id: { type: string, format: uuid }
+              additionalProperties: false
+      responses:
+        "201": { description: Claim draft created, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/claims/mine:
+    get:
+      tags: [Claims]
+      operationId: listMyClaims
+      summary: List claims owned by the authenticated user
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Claim page, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+  /v1/claims/{claimId}:
+    get:
+      tags: [Claims]
+      operationId: getClaim
+      summary: Get a claim and its restricted evidence
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Authorized claim detail, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/claims/{claimId}/evidence:
+    post:
+      tags: [Claims]
+      operationId: addClaimEvidence
+      summary: Add private ownership evidence to an editable claim
+      description: Send JSON for a statement or multipart data for a sanitized JPEG/PNG image.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClaimStatementRequest" }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [description, image]
+              properties:
+                description: { type: string, minLength: 10, maxLength: 2000 }
+                image: { type: string, format: binary }
+      responses:
+        "201": { description: Evidence added, content: { application/json: { schema: { $ref: "#/components/schemas/EvidenceEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/claims/{claimId}/evidence/{evidenceId}:
+    delete:
+      tags: [Claims]
+      operationId: deleteClaimEvidence
+      summary: Delete evidence from an editable owned claim
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: evidenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Evidence deleted }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/claims/{claimId}/evidence/{evidenceId}/content:
+    get:
+      tags: [Claims]
+      operationId: getClaimEvidenceContent
+      summary: Stream restricted evidence for the claimant or staff
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: evidenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Restricted JPEG or PNG evidence bytes
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+  /v1/claims/{claimId}/responses:
+    post:
+      tags: [Claims]
+      operationId: respondToClaimInformationRequest
+      summary: Add a statement after staff requests more information
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClaimStatementRequest" }
+      responses:
+        "201": { description: Response evidence added, content: { application/json: { schema: { $ref: "#/components/schemas/EvidenceEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/claims/{claimId}/submit:
+    post:
+      tags: [Claims]
+      operationId: submitClaim
+      summary: Submit an evidenced claim for staff review
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Claim submitted, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/claims/{claimId}/cancel:
+    post:
+      tags: [Claims]
+      operationId: cancelClaim
+      summary: Cancel a non-terminal owned claim
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Claim cancelled, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/tracking/{reference}:
+    get:
+      tags: [Tracking]
+      operationId: getTrackingTimeline
+      summary: Get an authorized report, claim, or return timeline
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reference, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Authorized timeline, content: { application/json: { schema: { $ref: "#/components/schemas/TimelineEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/return-arrangements/{returnId}:
+    get:
+      tags: [Tracking]
+      operationId: getReturnArrangement
+      summary: Get private return details for an involved user or staff
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Return arrangement, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: List notifications for the authenticated account
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Notification page, content: { application/json: { schema: { $ref: "#/components/schemas/NotificationList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+  /v1/notifications/{notificationId}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one owned notification as read
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Notification marked read, content: { application/json: { schema: { $ref: "#/components/schemas/NotificationEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark all owned notifications as read
+      security: [{ BearerAuth: [] }]
+      responses:
+        "204": { description: Notifications marked read }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+  /v1/staff/dashboard:
+    get:
+      tags: [Staff]
+      operationId: getStaffDashboard
+      summary: Get aggregate staff queue counts
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Staff dashboard counts, content: { application/json: { schema: { $ref: "#/components/schemas/StaffDashboardEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/staff/reports:
+    get:
+      tags: [Staff]
+      operationId: listStaffReports
+      summary: List reports for authorized moderation
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ReportStatus" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { $ref: "#/components/responses/ReportList" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/staff/reports/{reportId}/moderation-actions:
+    post:
+      tags: [Staff]
+      operationId: moderateReport
+      summary: Hide, restore, or close a report
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [hide, restore, close] }
+              additionalProperties: false
+      responses:
+        "200": { description: Moderated report, content: { application/json: { schema: { $ref: "#/components/schemas/ReportEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/staff/matches:
+    get:
+      tags: [Staff]
+      operationId: listStaffMatches
+      summary: List similarity results for staff review
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: review_status, in: query, schema: { type: string, enum: [pending, reviewed, dismissed] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Match review page, content: { application/json: { schema: { $ref: "#/components/schemas/MatchList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/staff/matches/{matchId}/review-actions:
+    post:
+      tags: [Staff]
+      operationId: reviewMatch
+      summary: Mark a match reviewed or dismissed without deciding ownership
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: matchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [review, dismiss] }
+              additionalProperties: false
+      responses:
+        "200": { description: Match review recorded, content: { application/json: { schema: { $ref: "#/components/schemas/MatchEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/staff/claims:
+    get:
+      tags: [Staff]
+      operationId: listStaffClaims
+      summary: List claims for authorized review
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ClaimStatus" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Claim review page, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/staff/claims/{claimId}:
+    get:
+      tags: [Staff]
+      operationId: getStaffClaim
+      summary: Get restricted claim evidence for authorized review
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Restricted claim detail, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/staff/claims/{claimId}/decisions:
+    post:
+      tags: [Staff]
+      operationId: decideClaim
+      summary: Start review, request information, approve, or reject a claim
+      description: Similarity scores are not accepted as ownership evidence by this endpoint.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClaimDecisionRequest" }
+      responses:
+        "200": { description: Decision recorded, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/staff/returns:
+    get:
+      tags: [Staff]
+      operationId: listStaffReturns
+      summary: List return arrangements
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ReturnStatus" } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Return page, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /v1/staff/claims/{claimId}/return-arrangements:
+    post:
+      tags: [Staff]
+      operationId: createReturnArrangement
+      summary: Start return scheduling for an approved claim
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: claimId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Return arrangement created, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+  /v1/staff/return-arrangements/{returnId}/schedule:
+    post:
+      tags: [Staff]
+      operationId: scheduleReturn
+      summary: Set private pickup time and location
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleReturnRequest" }
+      responses:
+        "200": { description: Return scheduled, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/staff/return-arrangements/{returnId}/confirm-pickup:
+    post:
+      tags: [Staff]
+      operationId: confirmReturnPickup
+      summary: Confirm item pickup
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: Pickup confirmed, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }, "401": { $ref: "#/components/responses/AuthenticationRequired" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/StateConflict" } }
+  /v1/staff/return-arrangements/{returnId}/complete:
+    post:
+      tags: [Staff]
+      operationId: completeReturn
+      summary: Mark the item returned
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: Item marked returned, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }, "401": { $ref: "#/components/responses/AuthenticationRequired" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/StateConflict" } }
+  /v1/staff/return-arrangements/{returnId}/close:
+    post:
+      tags: [Staff]
+      operationId: closeReturn
+      summary: Close the completed return workflow and active reports
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: Return workflow closed, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }, "401": { $ref: "#/components/responses/AuthenticationRequired" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/StateConflict" } }
+  /v1/staff/return-arrangements/{returnId}/cancel:
+    post:
+      tags: [Staff]
+      operationId: cancelReturn
+      summary: Cancel a return before pickup
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: returnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { "200": { description: Return cancelled, content: { application/json: { schema: { $ref: "#/components/schemas/ReturnEnvelope" } } } }, "401": { $ref: "#/components/responses/AuthenticationRequired" }, "403": { $ref: "#/components/responses/Forbidden" }, "404": { $ref: "#/components/responses/NotFound" }, "409": { $ref: "#/components/responses/StateConflict" } }
+  /v1/admin/audit-events:
+    get:
+      tags: [Admin]
+      operationId: listAuditEvents
+      summary: List restricted audit events
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 10000, default: 0 } }
+      responses:
+        "200": { description: Audit event page, content: { application/json: { schema: { $ref: "#/components/schemas/AuditEventList" } } } }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 components:
   securitySchemes:
     BearerAuth:
@@ -329,7 +951,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
     ValidationFailed:
-      description: Identifier or password does not satisfy account rules
+      description: Request fields fail semantic validation
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -340,6 +962,26 @@ components:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
     AuthenticationRequired:
       description: Bearer token is missing, invalid, or expired
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Forbidden:
+      description: Authenticated account lacks the required role
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: Resource is absent or deliberately concealed from this account
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    StateConflict:
+      description: Current workflow state or idempotency state rejects the action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ServiceUnavailable:
+      description: A required internal AI or object storage dependency is unavailable
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -424,6 +1066,9 @@ components:
     ReportType:
       type: string
       enum: [lost, found]
+    ReportStatus:
+      type: string
+      enum: [active, withdrawn, hidden, closed]
     CreateReportRequest:
       type: object
       required: [report_type, item_name, category, public_description, event_date, approximate_location]
@@ -439,9 +1084,23 @@ components:
             - { type: string, const: '' }
         approximate_location: { type: string, minLength: 2, maxLength: 120 }
       additionalProperties: false
+    UpdateReportRequest:
+      type: object
+      minProperties: 1
+      properties:
+        item_name: { type: string, minLength: 2, maxLength: 100 }
+        category: { type: string, minLength: 2, maxLength: 80 }
+        public_description: { type: string, minLength: 10, maxLength: 1000 }
+        event_date: { type: string, format: date }
+        approximate_time:
+          oneOf:
+            - { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+            - { type: string, const: '' }
+        approximate_location: { type: string, minLength: 2, maxLength: 120 }
+      additionalProperties: false
     Report:
       type: object
-      required: [id, report_type, item_name, category, public_description, event_date, approximate_time, approximate_location, created_at]
+      required: [id, report_type, item_name, category, public_description, event_date, approximate_time, approximate_location, status, created_at]
       properties:
         id: { type: string, format: uuid }
         report_type: { $ref: "#/components/schemas/ReportType" }
@@ -451,8 +1110,10 @@ components:
         event_date: { type: string, format: date }
         approximate_time: { type: [string, "null"] }
         approximate_location: { type: string }
+        status: { $ref: "#/components/schemas/ReportStatus" }
         created_at: { type: string, format: date-time }
-        withdrawn_at: { type: string, format: date-time }
+        withdrawn_at: { type: [string, "null"], format: date-time }
+        closed_at: { type: [string, "null"], format: date-time }
       additionalProperties: false
     ReportEnvelope:
       type: object
@@ -460,10 +1121,297 @@ components:
       properties:
         report: { $ref: "#/components/schemas/Report" }
       additionalProperties: false
+    ReportImage:
+      type: object
+      required: [id, content_type, size_bytes, width, height, is_primary, created_at, content_url]
+      properties:
+        id: { type: string, format: uuid }
+        content_type: { type: string, enum: [image/jpeg, image/png] }
+        size_bytes: { type: integer, minimum: 1, maximum: 8388608 }
+        width: { type: integer, minimum: 1, maximum: 6000 }
+        height: { type: integer, minimum: 1, maximum: 6000 }
+        is_primary: { type: boolean }
+        created_at: { type: string, format: date-time }
+        content_url: { type: string, format: uri-reference }
+      additionalProperties: false
+    ReportImageEnvelope:
+      type: object
+      required: [image]
+      properties:
+        image: { $ref: "#/components/schemas/ReportImage" }
+      additionalProperties: false
+    MatchingRun:
+      type: object
+      required: [id, report_id, status, candidate_count, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        report_id: { type: string, format: uuid }
+        status: { type: string, enum: [processing, completed, failed] }
+        model_version: { type: string }
+        config_version: { type: string }
+        candidate_count: { type: integer, minimum: 0 }
+        failure_code: { type: string }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+      additionalProperties: false
+    MatchCandidate:
+      type: object
+      required: [id, report_type, item_name, category, public_description, event_date, approximate_location, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        report_type: { $ref: "#/components/schemas/ReportType" }
+        item_name: { type: string }
+        category: { type: string }
+        public_description: { type: string }
+        event_date: { type: string, format: date }
+        approximate_location: { type: string }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    Match:
+      type: object
+      required: [id, source_report_id, score, signals, model_version, config_version, review_status, created_at, candidate]
+      properties:
+        id: { type: string, format: uuid }
+        source_report_id: { type: string, format: uuid }
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Similarity estimate only; never ownership proof.
+        signals: { type: array, items: { type: string } }
+        model_version: { type: string }
+        config_version: { type: string }
+        review_status: { type: string, enum: [pending, reviewed, dismissed] }
+        created_at: { type: string, format: date-time }
+        candidate: { $ref: "#/components/schemas/MatchCandidate" }
+      additionalProperties: false
+    MatchEnvelope:
+      type: object
+      required: [match]
+      properties:
+        match: { $ref: "#/components/schemas/Match" }
+      additionalProperties: false
+    MatchList:
+      type: object
+      required: [matches, pagination]
+      properties:
+        matches: { type: array, items: { $ref: "#/components/schemas/Match" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      additionalProperties: false
+    MatchingRunEnvelope:
+      type: object
+      required: [run, matches]
+      properties:
+        run: { $ref: "#/components/schemas/MatchingRun" }
+        matches: { type: array, items: { $ref: "#/components/schemas/Match" } }
+      additionalProperties: false
+    ClaimStatus:
+      type: string
+      enum: [draft, submitted, under_review, needs_more_info, approved, rejected, cancelled]
+    ClaimEvidence:
+      type: object
+      required: [id, evidence_type, description, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        evidence_type: { type: string, enum: [statement, image] }
+        description: { type: string, minLength: 10, maxLength: 2000 }
+        content_type: { type: string, enum: [image/jpeg, image/png] }
+        size_bytes: { type: integer, minimum: 1, maximum: 8388608 }
+        width: { type: integer, minimum: 1, maximum: 6000 }
+        height: { type: integer, minimum: 1, maximum: 6000 }
+        content_url: { type: string, format: uri-reference }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    VerificationDecision:
+      type: object
+      required: [id, action, previous_status, next_status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, enum: [start_review, request_more_info, approve, reject] }
+        reason: { type: string, minLength: 3, maxLength: 1000 }
+        previous_status: { $ref: "#/components/schemas/ClaimStatus" }
+        next_status: { $ref: "#/components/schemas/ClaimStatus" }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    Claim:
+      type: object
+      required: [id, match_id, lost_report_id, found_report_id, claimant_id, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        match_id: { type: string, format: uuid }
+        lost_report_id: { type: string, format: uuid }
+        found_report_id: { type: string, format: uuid }
+        claimant_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ClaimStatus" }
+        submitted_at: { type: string, format: date-time }
+        reviewed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        evidence: { type: array, items: { $ref: "#/components/schemas/ClaimEvidence" } }
+        decisions: { type: array, items: { $ref: "#/components/schemas/VerificationDecision" } }
+      additionalProperties: false
+    ClaimEnvelope:
+      type: object
+      required: [claim]
+      properties:
+        claim: { $ref: "#/components/schemas/Claim" }
+      additionalProperties: false
+    ClaimList:
+      type: object
+      required: [claims, pagination]
+      properties:
+        claims: { type: array, items: { $ref: "#/components/schemas/Claim" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      additionalProperties: false
+    ClaimStatementRequest:
+      type: object
+      required: [description]
+      properties:
+        description: { type: string, minLength: 10, maxLength: 2000 }
+      additionalProperties: false
+    EvidenceEnvelope:
+      type: object
+      required: [evidence]
+      properties:
+        evidence: { $ref: "#/components/schemas/ClaimEvidence" }
+      additionalProperties: false
+    ClaimDecisionRequest:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [start_review, request_more_info, approve, reject] }
+        reason: { type: string, minLength: 3, maxLength: 1000 }
+      additionalProperties: false
+    ReturnStatus:
+      type: string
+      enum: [scheduling, scheduled, picked_up, returned, closed, cancelled]
+    ReturnArrangement:
+      type: object
+      required: [id, claim_id, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        claim_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ReturnStatus" }
+        pickup_at: { type: string, format: date-time }
+        pickup_location:
+          type: string
+          description: Restricted to involved users and staff.
+        private_notes:
+          type: string
+          description: Staff-only coordination notes; omitted from ordinary user responses.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time }
+      additionalProperties: false
+    ReturnEnvelope:
+      type: object
+      required: [return_arrangement]
+      properties:
+        return_arrangement: { $ref: "#/components/schemas/ReturnArrangement" }
+      additionalProperties: false
+    ReturnList:
+      type: object
+      required: [return_arrangements, pagination]
+      properties:
+        return_arrangements: { type: array, items: { $ref: "#/components/schemas/ReturnArrangement" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      additionalProperties: false
+    ScheduleReturnRequest:
+      type: object
+      required: [pickup_at, pickup_location]
+      properties:
+        pickup_at: { type: string, format: date-time }
+        pickup_location: { type: string, minLength: 2, maxLength: 240 }
+        private_notes: { type: string, maxLength: 1000 }
+      additionalProperties: false
+    TrackingEvent:
+      type: object
+      required: [id, event_type, message, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        event_type: { type: string }
+        message: { type: string }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    Timeline:
+      type: object
+      required: [reference, reference_type, current_status, events]
+      properties:
+        reference: { type: string, format: uuid }
+        reference_type: { type: string, enum: [report, claim, return] }
+        current_status: { type: string }
+        events: { type: array, items: { $ref: "#/components/schemas/TrackingEvent" } }
+      additionalProperties: false
+    TimelineEnvelope:
+      type: object
+      required: [timeline]
+      properties:
+        timeline: { $ref: "#/components/schemas/Timeline" }
+      additionalProperties: false
+    Notification:
+      type: object
+      required: [id, notification_type, title, message, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        notification_type: { type: string }
+        title: { type: string }
+        message: { type: string }
+        related_path: { type: string, format: uri-reference }
+        read_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    NotificationEnvelope:
+      type: object
+      required: [notification]
+      properties:
+        notification: { $ref: "#/components/schemas/Notification" }
+      additionalProperties: false
+    NotificationList:
+      type: object
+      required: [notifications, pagination]
+      properties:
+        notifications: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      additionalProperties: false
+    StaffDashboard:
+      type: object
+      required: [open_reports, potential_matches, claims_to_review, returns_in_progress]
+      properties:
+        open_reports: { type: integer, minimum: 0 }
+        potential_matches: { type: integer, minimum: 0 }
+        claims_to_review: { type: integer, minimum: 0 }
+        returns_in_progress: { type: integer, minimum: 0 }
+      additionalProperties: false
+    StaffDashboardEnvelope:
+      type: object
+      required: [dashboard]
+      properties:
+        dashboard: { $ref: "#/components/schemas/StaffDashboard" }
+      additionalProperties: false
+    AuditEvent:
+      type: object
+      required: [id, action, subject_type, subject_id, metadata, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        actor_id: { type: string, format: uuid }
+        action: { type: string }
+        subject_type: { type: string, enum: [report, match, claim, return, notification] }
+        subject_id: { type: string, format: uuid }
+        metadata: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    AuditEventList:
+      type: object
+      required: [audit_events, pagination]
+      properties:
+        audit_events: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+      additionalProperties: false
     Pagination:
       type: object
       required: [limit, offset]
       properties:
-        limit: { type: integer, minimum: 1, maximum: 50 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
         offset: { type: integer, minimum: 0, maximum: 10000 }
       additionalProperties: false

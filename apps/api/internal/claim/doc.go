@@ -1,2 +1,2 @@
-// Package claim is reserved for the separately authorized claim workflow.
+// Package claim owns private claim evidence and staff verification decisions.
 package claim
