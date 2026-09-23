@@ -1,2 +1,2 @@
-// Package notification is reserved for future delivery adapters.
+// Package notification exposes authenticated in-app workflow notifications.
 package notification

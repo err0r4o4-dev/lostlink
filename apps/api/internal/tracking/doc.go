@@ -1,2 +1,2 @@
-// Package tracking is reserved for approved item lifecycle tracking.
+// Package tracking owns authorized timelines and return handoff transitions.
 package tracking

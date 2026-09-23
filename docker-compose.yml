@@ -56,6 +56,7 @@ services:
       GOOGLE_OAUTH_REDIRECT_URL: ${GOOGLE_OAUTH_REDIRECT_URL:-}
       DATABASE_URL: ${DATABASE_URL:-postgres://lostlink:replace-me-local-only@postgres:5432/lostlink?sslmode=disable}
       AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-replace-me-internal-service-token}
       STORAGE_ENDPOINT: minio:9000
       STORAGE_BUCKET: ${STORAGE_BUCKET:-lostlink-dev}
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-replace-me-local-only}
@@ -90,6 +91,7 @@ services:
     restart: unless-stopped
     environment:
       WATCHFILES_FORCE_POLLING: "true"
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-replace-me-internal-service-token}
     volumes:
       - ./apps/ai:/app
     healthcheck:

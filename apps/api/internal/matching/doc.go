@@ -1,2 +1,2 @@
-// Package matching will orchestrate discovery signals without deciding ownership.
+// Package matching orchestrates public-safe similarity without deciding ownership.
 package matching

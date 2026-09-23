@@ -7,8 +7,13 @@ import (
 	"net/http"
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/notification"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
 	"github.com/gin-gonic/gin"
 	"github.com/watchakorn-18k/scalar-go"
 )
@@ -24,6 +29,11 @@ type Options struct {
 	WebOrigin     string
 	SecureCookies bool
 	GoogleOAuth   *auth.GoogleOAuth
+	Matching      *matching.Service
+	Claims        *claim.Service
+	Tracking      *tracking.Service
+	Notifications *notification.Service
+	Admin         *admin.Repository
 }
 
 func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
@@ -39,9 +49,39 @@ func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
 	}), gin.Recovery())
 	router.GET("/health", health)
 	if options.Auth != nil {
-		auth.RegisterRoutes(router.Group("/v1/auth"), options.Auth, options.WebOrigin, options.SecureCookies, options.GoogleOAuth)
+		v1 := router.Group("/v1")
+		auth.RegisterRoutes(v1.Group("/auth"), options.Auth, options.WebOrigin, options.SecureCookies, options.GoogleOAuth)
 		if options.Reports != nil {
-			report.RegisterRoutes(router.Group("/v1/reports"), options.Reports, options.Auth)
+			report.RegisterRoutes(v1.Group("/reports"), options.Reports, options.Auth)
+		}
+		if options.Matching != nil {
+			matching.RegisterRoutes(v1, options.Matching, options.Auth)
+		}
+		if options.Claims != nil {
+			claim.RegisterRoutes(v1, options.Claims, options.Auth)
+		}
+		if options.Tracking != nil {
+			tracking.RegisterRoutes(v1, options.Tracking, options.Auth)
+		}
+		if options.Notifications != nil {
+			notification.RegisterRoutes(v1, options.Notifications, options.Auth)
+		}
+		staff := v1.Group("/staff")
+		if options.Reports != nil {
+			report.RegisterStaffRoutes(staff, options.Reports, options.Auth)
+		}
+		if options.Matching != nil {
+			matching.RegisterStaffRoutes(staff, options.Matching, options.Auth)
+		}
+		if options.Claims != nil {
+			claim.RegisterStaffRoutes(staff, options.Claims, options.Auth)
+		}
+		if options.Tracking != nil {
+			tracking.RegisterStaffRoutes(staff, options.Tracking, options.Auth)
+		}
+		if options.Admin != nil {
+			admin.RegisterStaffRoutes(staff, options.Admin, options.Auth)
+			admin.RegisterAdminRoutes(v1.Group("/admin"), options.Admin, options.Auth)
 		}
 	}
 	docsHTML, docsErr := scalar.ApiReferenceHTML(&scalar.Options{

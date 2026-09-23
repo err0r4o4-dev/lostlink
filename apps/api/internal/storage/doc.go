@@ -1,2 +1,2 @@
-// Package storage will define the server-side S3-compatible object abstraction.
+// Package storage validates images and provides private S3-compatible object access.
 package storage

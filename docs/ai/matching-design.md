@@ -4,14 +4,19 @@
 
 Matching ranks potentially related lost and found reports using image and text signals. It is a recall-oriented discovery aid. It must not approve a claim or assert ownership.
 
-## Planned pipeline
+## Implemented bootstrap pipeline
 
-1. Validate and preprocess approved public-safe image/text fields.
-2. Produce versioned image embeddings (CLIP or SigLIP candidate) and text embeddings (Sentence Transformers candidate).
-3. Retrieve candidates with pgvector using declared distance/normalization semantics.
-4. Apply deterministic eligibility filters such as report type, lifecycle state, bounded time, and campus/location policy.
-5. Fuse calibrated signals, rank candidates, and expose only safe explanations (for example category/color/time proximity).
-6. Record model/config version and evaluation metadata for reproducibility.
+1. Go selects active opposite-type candidates using category and a bounded 180-day window.
+2. Go sends only public-safe report text to the authenticated internal AI endpoint.
+3. The AI service produces normalized 32-dimensional deterministic hashing vectors (`bootstrap-hash-embedding-v1`, config `public-safe-32d-v1`).
+4. Go stores versioned vectors and retrieves candidates with pgvector cosine distance.
+5. Go stores scores plus safe category/location/date signals and returns only public-safe candidate fields.
+6. Every run records model/config versions and fails safely when AI output is unavailable or invalid.
+
+This baseline intentionally avoids model downloads and is not equivalent to a
+trained semantic or multimodal model. Image embeddings, calibrated fusion, and
+production thresholds remain future model work requiring approved datasets and
+evaluation evidence.
 
 Private ownership answers, serial secrets withheld for verification, receipts, claimant contact data, and staff-only notes must not be embedded or returned as explanations.
 
