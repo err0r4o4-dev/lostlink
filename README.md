@@ -73,7 +73,7 @@ Implemented:
 - Reversible migrations for the PostgreSQL `vector` extension, users, and refresh sessions
 - Dockerfiles, Docker Compose, Caddy routing, health checks, private backend networking, and persistent development volumes
 - Web, Go, and Python unit tests plus a Playwright bootstrap smoke test
-- GitHub Actions quality gates, pull-request policy checks, Dependabot, and CodeQL scanning
+- GitHub Actions quality gates, pull-request policy checks, a frontend pull-request preview workflow, Dependabot, and CodeQL scanning
 - Repository-wide agent guidance, scoped roles, and project-specific skills
 
 Not implemented yet:
@@ -440,7 +440,7 @@ python -c "from app.main import app; assert app.title == 'LostLink Internal AI'"
 make check
 ```
 
-GitHub Actions also runs repository auditing, service quality gates, a browser smoke test, Compose validation, pull-request policy checks, and CodeQL. Never claim that a check passed unless it completed successfully.
+GitHub Actions also runs repository auditing, service quality gates, a browser smoke test, Compose validation, pull-request policy checks, and CodeQL. It can publish frontend pull-request previews after GitHub Pages is configured as documented in [the PR preview runbook](docs/runbooks/pr-previews.md). Never claim that a check passed unless it completed successfully.
 
 ## Development standards
 
