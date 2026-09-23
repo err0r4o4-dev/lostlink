@@ -3,13 +3,13 @@ import withReactContent from 'sweetalert2-react-content'
 
 const MySwal = withReactContent(Swal)
 
-// Custom styles matching the design system
 const customClass = {
-  popup: 'rounded-overlay glass-panel !bg-surface !text-text-primary !border !border-border shadow-floating',
-  title: '!text-section !font-bold !text-text-primary',
-  htmlContainer: '!text-body !text-text-secondary !font-medium',
-  confirmButton: 'ui-transition pressable !rounded-control !bg-brand !px-6 !py-2.5 !font-semibold !text-on-brand hover:!bg-brand-hover',
-  cancelButton: 'ui-transition pressable !rounded-control !bg-surface-secondary !px-6 !py-2.5 !font-semibold !text-text-secondary hover:!bg-brand-soft hover:!text-brand !ml-3',
+  popup: 'kg-swal-popup',
+  title: 'kg-swal-title',
+  htmlContainer: 'kg-swal-text',
+  actions: 'kg-swal-actions',
+  confirmButton: 'kg-swal-button kg-swal-button-primary',
+  cancelButton: 'kg-swal-button kg-swal-button-secondary',
 }
 
 const baseOptions = {
@@ -21,9 +21,6 @@ const baseOptions = {
 }
 
 export const showAlert = {
-  /**
-   * แจ้งเตือนเมื่อทำสำเร็จ
-   */
   success: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -34,9 +31,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนข้อผิดพลาด
-   */
   error: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -47,9 +41,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนทั่วไป (Info)
-   */
   info: (title: string, text?: string) => {
     return MySwal.fire({
       ...baseOptions,
@@ -60,9 +51,6 @@ export const showAlert = {
     })
   },
 
-  /**
-   * แจ้งเตือนสำหรับยืนยันการทำรายการบางอย่าง
-   */
   confirm: async (title: string, text?: string, confirmText = 'ยืนยัน', cancelText = 'ยกเลิก') => {
     const result = await MySwal.fire({
       ...baseOptions,
@@ -75,15 +63,12 @@ export const showAlert = {
       cancelButtonText: cancelText,
       customClass: {
         ...customClass,
-        confirmButton: 'ui-transition pressable !rounded-control !bg-brand !px-6 !py-2.5 !font-semibold !text-on-brand hover:!bg-brand-hover',
+        confirmButton: 'kg-swal-button kg-swal-button-primary',
       }
     })
     return result.isConfirmed
   },
 
-  /**
-   * แจ้งเตือนสำหรับยืนยันการลบ (ปุ่มกดยืนยันจะเป็นสีแดง)
-   */
   confirmDestructive: async (title: string, text?: string, confirmText = 'ลบข้อมูล', cancelText = 'ยกเลิก') => {
     const result = await MySwal.fire({
       ...baseOptions,
@@ -96,7 +81,7 @@ export const showAlert = {
       cancelButtonText: cancelText,
       customClass: {
         ...customClass,
-        confirmButton: 'ui-transition pressable !rounded-control !bg-error !px-6 !py-2.5 !font-semibold !text-white hover:!bg-error-strong',
+        confirmButton: 'kg-swal-button kg-swal-button-danger',
       }
     })
     return result.isConfirmed

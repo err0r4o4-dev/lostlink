@@ -10,6 +10,7 @@ import { Localize } from '../../i18n/language'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../auth/auth-state'
 import { createReport, type ReportRecord } from './report-api'
+import { showAlert } from '../../lib/alert'
 
 const reportSchema = z.object({
   itemName: z.string().trim().min(2, 'Enter a clear item name.').max(100, 'Keep the item name under 100 characters.'),
@@ -56,8 +57,10 @@ export function ReportForm({ reportType }: ReportFormProps) {
         approximate_location: reviewValues.location,
       }, accessToken, idempotencyKey)
       setCreated(response.report)
+      void showAlert.success('ส่งรายงานเรียบร้อย', 'ข้อมูลของคุณถูกบันทึกเข้าระบบแล้ว')
     } catch (error) {
-      setSubmitError(error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.')
+      const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
+      setSubmitError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
