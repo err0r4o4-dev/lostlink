@@ -31,6 +31,22 @@ afterEach(() => {
 })
 
 describe('SweetAlert feedback', () => {
+  it('keeps the success icon transparent on the glass popup', async () => {
+    const user = userEvent.setup()
+    const result = showAlert.success('Signed out', 'Your session has ended.')
+
+    expect(await screen.findByText('Signed out')).toBeInTheDocument()
+    expect(document.querySelector('.swal2-success-circular-line-left')).not.toBeInTheDocument()
+    expect(document.querySelector('.swal2-success-circular-line-right')).not.toBeInTheDocument()
+    expect(document.querySelector('.swal2-success-fix')).not.toBeInTheDocument()
+    document.querySelectorAll<HTMLElement>('[class^="swal2-success-line"]').forEach((line) => {
+      expect(line.style.animation).toBe('none')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    await expect(result).resolves.toMatchObject({ isConfirmed: true })
+  })
+
   it('returns false when a confirmation is cancelled', async () => {
     const user = userEvent.setup()
     const result = showAlert.confirm(

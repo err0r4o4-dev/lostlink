@@ -11,7 +11,11 @@ import (
 	"time"
 )
 
-const minimumJWTSecretBytes = 29
+const (
+	minimumJWTSecretBytes      = 29
+	localJWTSecretPlaceholder  = "replace-me-with-at-least-29-random-bytes"
+	legacyJWTSecretPlaceholder = "replace-me-with-at-least-32-random-bytes"
+)
 
 type Config struct {
 	Environment        string
@@ -71,7 +75,7 @@ func Load() (Config, error) {
 	if len(cfg.JWTSecret) < minimumJWTSecretBytes {
 		return Config{}, fmt.Errorf("JWT_SECRET must contain at least %d bytes", minimumJWTSecretBytes)
 	}
-	if cfg.Environment == "production" && cfg.JWTSecret == "replace-me-with-at-least-32-random-bytes" {
+	if cfg.Environment == "production" && (cfg.JWTSecret == localJWTSecretPlaceholder || cfg.JWTSecret == legacyJWTSecretPlaceholder) {
 		return Config{}, fmt.Errorf("JWT_SECRET placeholder is forbidden in production")
 	}
 	googleValues := 0

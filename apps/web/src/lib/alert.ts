@@ -35,6 +35,14 @@ function baseOptions() {
   }
 }
 
+function removeSuccessIconMasks(popup: HTMLElement) {
+  // SweetAlert's opaque animation masks become visible over the translucent popup.
+  popup.querySelectorAll('[class^="swal2-success-circular-line"], .swal2-success-fix').forEach((mask) => mask.remove())
+  popup.querySelectorAll<HTMLElement>('[class^="swal2-success-line"]').forEach((line) => {
+    line.style.animation = 'none'
+  })
+}
+
 export const showAlert = {
   success: (title: string, text?: string) => {
     return MySwal.fire({
@@ -43,6 +51,7 @@ export const showAlert = {
       iconColor: 'var(--color-success)',
       title,
       text,
+      didRender: removeSuccessIconMasks,
     })
   },
 

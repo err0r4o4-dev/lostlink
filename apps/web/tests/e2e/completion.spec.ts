@@ -20,7 +20,8 @@ async function mockAuthenticatedSession(page: import('@playwright/test').Page, r
 }
 
 const routeCases = [
-  ['/', /Lost items deserve/],
+  ['/', /Discovery tools/],
+  ['/discover', /Discovery tools/],
   ['/search', /Search LostLink/],
   ['/report', /What happened/],
   ['/report/lost', /Report a lost item/],
@@ -135,7 +136,11 @@ test('moves focus to main content after client-side navigation', async ({ page }
   await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Report' }).click()
+  await expect(page).toHaveURL(/\/discover$/)
+  const primaryNavigation = page.getByRole('navigation', { name: 'Primary' })
+  await expect(primaryNavigation.getByRole('link', { name: 'Explore items' })).toHaveAttribute('href', '/discover')
+  await expect(primaryNavigation.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0)
+  await primaryNavigation.getByRole('link', { name: 'Report' }).click()
   await expect(page).toHaveURL(/\/report$/)
   await expect(page.getByRole('main')).toBeFocused()
 })
@@ -144,6 +149,7 @@ test('switches between Thai and English next to the notification action', async 
   await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
+  await expect(page).toHaveURL(/\/discover$/)
 
   const notificationAction = page.getByRole('link', { name: 'Notifications' })
   const thaiLanguageAction = page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })
@@ -161,14 +167,14 @@ test('switches between Thai and English next to the notification action', async 
   expect(languageBox?.height).toBe(notificationBox?.height)
 
   await thaiLanguageAction.click()
-  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'เครื่องมือค้นหา' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Switch language to English' }).getByText('TH', { exact: true })).toHaveClass(/bg-brand/)
   await expect(page.getByRole('button', { name: 'Switch language to English' }).getByText('EN', { exact: true })).not.toHaveClass(/bg-brand/)
   await expect(page.locator('html')).toHaveAttribute('lang', 'th')
 
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'เครื่องมือค้นหา' })).toBeVisible()
   await page.getByRole('button', { name: 'Switch language to English' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: /Lost items deserve/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Discovery tools' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 })

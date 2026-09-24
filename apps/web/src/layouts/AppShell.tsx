@@ -2,7 +2,7 @@ import {
   Bell,
   CircleHelp,
   Clock3,
-  Home,
+  Compass,
   MapPin,
   PackagePlus,
   Search,
@@ -24,7 +24,7 @@ interface NavigationItem {
 }
 
 const desktopNavigation: NavigationItem[] = [
-  { to: '/', icon: Home, label: 'Home' },
+  { to: '/discover', icon: Compass, label: 'Explore items' },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/report', icon: PackagePlus, label: 'Report' },
   { to: '/matches', icon: Sparkles, label: 'Matches' },

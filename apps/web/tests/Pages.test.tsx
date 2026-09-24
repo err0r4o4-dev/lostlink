@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, matchRoutes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, matchRoutes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const alertMocks = vi.hoisted(() => ({
@@ -15,6 +15,7 @@ vi.mock('../src/lib/alert', () => ({ showAlert: alertMocks }))
 
 import { ApiError } from '../src/api/client'
 import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/AuthPages'
+import { HomePage } from '../src/pages/HomePage'
 import { ReportLostPage } from '../src/pages/ReportPages'
 import { ProfilePage } from '../src/pages/SupportPages'
 import { router } from '../src/routes/router'
@@ -58,6 +59,22 @@ async function reviewValidLostReport(user: ReturnType<typeof userEvent.setup>) {
 describe('frontend completion routes', () => {
   it.each(approvedRoutes)('defines %s', (path) => {
     expect(matchRoutes(router.routes, path)).not.toBeNull()
+  })
+
+  it('redirects authenticated users away from the removed home page', () => {
+    render(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/discover" element={<h1>Discovery tools</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Discovery tools' })).toBeInTheDocument()
+    expect(screen.queryByText('Lost items deserve a clear path home.')).not.toBeInTheDocument()
   })
 
   it('submits approved report fields without sending private verification details', async () => {
