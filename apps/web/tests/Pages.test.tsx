@@ -272,13 +272,13 @@ describe('frontend completion routes', () => {
     render(<AuthContext.Provider value={{ ...authenticatedContext, authenticate }}><MemoryRouter><RegisterPage /></MemoryRouter></AuthContext.Provider>)
 
     await user.type(screen.getByLabelText(/university email/i), 'student@example.edu')
-    await user.type(screen.getByLabelText(/^password/i), 'local-test-only')
-    await user.type(screen.getByLabelText(/confirm password/i), 'local-test-only')
+    await user.type(screen.getByLabelText(/^password/i), 'replace-me-test-only')
+    await user.type(screen.getByLabelText(/confirm password/i), 'replace-me-test-only')
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => expect(authenticate).toHaveBeenCalledWith('register', {
       identifier: 'student@example.edu',
-      password: 'local-test-only',
+      password: 'replace-me-test-only',
     }))
     expect(alertMocks.success).toHaveBeenCalledWith('Account created', 'Your LostLink account is ready.')
   })
