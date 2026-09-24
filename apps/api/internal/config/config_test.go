@@ -8,7 +8,7 @@ import (
 func setValidAuthEnvironment(t *testing.T) {
 	t.Helper()
 	t.Setenv("APP_ENV", "test")
-	t.Setenv("API_PORT", "8080")
+	t.Setenv("API_PORT", "8081")
 	t.Setenv("JWT_ACCESS_TTL", "15m")
 	t.Setenv("JWT_REFRESH_TTL", "720h")
 	t.Setenv("JWT_SECRET", strings.Repeat("a", minimumJWTSecretBytes))

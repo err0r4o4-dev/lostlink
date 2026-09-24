@@ -314,7 +314,7 @@ cd apps/ai
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The Vite development server listens on <http://localhost:5173>. The standalone Go API listens on <http://localhost:8080>, and the standalone AI service listens on <http://localhost:8000>. The web client expects API requests under same-origin `/api`, so use the integrated Caddy environment when testing browser-to-API routing.
+The Vite development server listens on <http://localhost:5173>. The standalone Go API listens on <http://localhost:8081>, and the standalone AI service listens on <http://localhost:8000>. The web client expects API requests under same-origin `/api`, so use the integrated Caddy environment when testing browser-to-API routing.
 
 ### Make commands
 
@@ -337,7 +337,7 @@ The authoritative local template is [`.env.example`](.env.example).
 | `APP_ENV` | Go API runtime environment | Used; defaults to `development` |
 | `PUBLIC_PORT` | Caddy host port | Used; defaults to `8088` |
 | `WEB_ORIGIN` | Exact trusted browser origin for authentication mutations | Used by the Go API |
-| `API_PORT` | Go API listen port | Used by direct API startup; Compose sets `8080` |
+| `API_PORT` | Go API listen port | Used by direct API startup; Compose sets `8081` |
 | `AI_PORT` | Intended AI-service port | Template value; Compose currently sets `8000` |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL bootstrap configuration | Used by Compose |
 | `DATABASE_URL` | Go and migration PostgreSQL connection | Used by Compose and the Go API |
@@ -374,9 +374,9 @@ Never commit `.env`, real credentials, tokens, keys, or production connection st
 
 | Service | Method and URL | Purpose |
 | --- | --- | --- |
-| Go API | `GET http://localhost:8080/health` | Process liveness when run directly |
-| Go API | `GET http://localhost:8080/docs` | Scalar API Reference when run directly |
-| Go API | `GET http://localhost:8080/docs/swagger.yaml` | OpenAPI document when run directly |
+| Go API | `GET http://localhost:8081/health` | Process liveness when run directly |
+| Go API | `GET http://localhost:8081/docs` | Scalar API Reference when run directly |
+| Go API | `GET http://localhost:8081/docs/swagger.yaml` | OpenAPI document when run directly |
 | Python AI | `GET http://localhost:8000/health` | Internal process liveness when run directly |
 
 Examples:

@@ -38,7 +38,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		Environment:        valueOrDefault("APP_ENV", "development"),
-		Port:               valueOrDefault("API_PORT", "8080"),
+		Port:               valueOrDefault("API_PORT", "8081"),
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
 		WebOrigin:          valueOrDefault("WEB_ORIGIN", "http://localhost:8088"),
 		JWTIssuer:          valueOrDefault("JWT_ISSUER", "lostlink-api"),
