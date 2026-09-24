@@ -45,6 +45,8 @@ const routeCases = [
   ['/register', /Create your account/],
   ['/forgot-password', /Recover account access/],
   ['/reset-password', /Set a new password/],
+  ['/privacy', /ข้อมูลความเป็นส่วนตัว/],
+  ['/terms', /ข้อกำหนดการใช้งาน/],
 ] as const
 
 const viewports = [375, 390, 430, 768, 1024, 1280, 1440, 1920]
@@ -117,7 +119,10 @@ test('provides truthful authentication validation and pending state', async ({ p
   await page.getByLabel('University email or account identifier').fill('student@example.edu')
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('local-test-only')
   await page.getByRole('button', { name: /Sign in/ }).click()
-  await expect(page.getByRole('alert')).toContainText('Sign in failed')
+  const failureDialog = page.getByRole('dialog', { name: 'Sign in failed' })
+  await expect(failureDialog).toContainText('The request could not be completed')
+  await failureDialog.getByRole('button', { name: 'OK' }).click()
+  await expect(page.getByRole('alert')).toContainText('The request could not be completed')
 })
 
 test('renders a deliberate not-found state', async ({ page }) => {
@@ -136,6 +141,7 @@ test('moves focus to main content after client-side navigation', async ({ page }
 })
 
 test('switches between Thai and English next to the notification action', async ({ page }) => {
+  await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
 

@@ -28,7 +28,7 @@ const approvedRoutes = [
   '/matches', '/matches/match-reference', '/verification', '/claims/new', '/claims/claim-reference',
   '/tracking', '/notifications', '/profile', '/help', '/locations', '/onboarding', '/staff',
   '/staff/reports', '/staff/matches', '/staff/claims', '/login', '/register', '/forgot-password', '/reset-password',
-  '/auth/callback',
+  '/auth/callback', '/privacy', '/terms',
 ]
 
 afterEach(() => {

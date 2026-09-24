@@ -1,15 +1,27 @@
 import { createBrowserRouter, createHashRouter, type RouteObject } from 'react-router-dom'
 
 import { AppShell } from '../layouts/AppShell'
+import { HomeLayout } from '../layouts/HomeLayout'
+import { PublicLayout } from '../layouts/PublicLayout'
 import { HomePage } from '../pages/HomePage'
 import { RequireAuth, RequireStaff } from '../features/auth/route-guards'
 
 const routes = [
   {
     path: '/',
+    element: <HomeLayout />,
+    children: [{ index: true, element: <HomePage /> }],
+  },
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: 'privacy', lazy: async () => ({ Component: (await import('../pages/PublicInfoPages')).PrivacyPage }) },
+      { path: 'terms', lazy: async () => ({ Component: (await import('../pages/PublicInfoPages')).TermsPage }) },
+    ],
+  },
+  {
     element: <AppShell />,
     children: [
-      { index: true, element: <HomePage /> },
       { path: 'discover', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).DiscoveryHubPage }) },
       { path: 'search', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).SearchPage }) },
       { path: 'items/:itemId', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).ItemDetailPage }) },

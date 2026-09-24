@@ -1,51 +1,45 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { App } from '../src/App'
 
 describe('App', () => {
-  it('renders one accessible page and preserves the matching trust boundary', () => {
+  it('renders the guest home with the matching and privacy trust boundaries', () => {
     render(<App />)
 
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
-    expect(screen.getByRole('heading', { level: 1, name: /lost items deserve/i })).toBeInTheDocument()
-    expect(screen.getByText(/similarity assists discovery/i)).toBeInTheDocument()
-    expect(screen.getByText(/verification stays private/i)).toBeInTheDocument()
-    expect(screen.getByText(/humans make the decision/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /ของที่หาย.*อาจกำลังรอให้คุณมาพบ/i })).toBeInTheDocument()
+    expect(screen.getByText(/AI เป็นเพียงเครื่องมือช่วยค้นหาและจัดอันดับ/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /ไม่ต้องเปิดเผยข้อมูลเกินความจำเป็น/ })).toBeInTheDocument()
+    expect(screen.getByText('ตรวจสอบก่อนรับของคืน')).toBeInTheDocument()
   })
 
-  it('links to complete frontend workflows without inventing server results', () => {
+  it('sends guest calls to action only to authentication routes', () => {
     render(<App />)
 
-    expect(screen.getByRole('link', { name: /report a lost item/i })).toHaveAttribute('href', '/report/lost')
-    expect(screen.getByRole('link', { name: /report a found item/i })).toHaveAttribute('href', '/report/found')
-    expect(screen.getByRole('link', { name: /open search/i })).toHaveAttribute('href', '/search')
-    expect(screen.getByText(/no public items yet/i)).toBeInTheDocument()
+    for (const link of screen.getAllByRole('link', { name: /เข้าสู่ระบบ/ })) {
+      expect(link).toHaveAttribute('href', '/login')
+    }
+    for (const link of screen.getAllByRole('link', { name: /สร้างบัญชี|เริ่มต้นใช้งาน/ })) {
+      expect(link).toHaveAttribute('href', '/register')
+    }
+    expect(screen.queryByRole('link', { name: /แจ้งของหาย|รายการที่อาจตรงกัน|ติดตามสถานะ/ })).not.toBeInTheDocument()
   })
 
-  it('exposes skip and section navigation landmarks', () => {
+  it('does not mount authenticated navigation for a guest session', () => {
     render(<App />)
 
-    expect(screen.getByRole('link', { name: /skip to content/i })).toHaveAttribute('href', '#main-content')
-    expect(screen.getAllByRole('navigation').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByRole('link', { name: 'Search' }).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('link', { name: 'ข้ามไปยังเนื้อหา' })).toHaveAttribute('href', '#main-content')
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Mobile primary' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Search' })).not.toBeInTheDocument()
   })
 
-  it('switches the interface between English and Thai and remembers the choice', async () => {
-    const user = userEvent.setup()
+  it('exposes only the requested public footer destinations', () => {
     render(<App />)
 
-    expect(screen.getAllByText('TH').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('EN').length).toBeGreaterThanOrEqual(1)
-    const languageButton = screen.getAllByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })[0]
-    expect(languageButton.querySelector('svg')).toBeNull()
-    await user.click(languageButton)
-
-    expect(screen.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'ค้นหา' }).length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByRole('button', { name: 'Switch language to English' }).length).toBeGreaterThanOrEqual(1)
-    expect(document.documentElement).toHaveAttribute('lang', 'th')
-    expect(window.localStorage.getItem('lostlink-language')).toBe('th')
+    expect(screen.getByRole('link', { name: 'ความเป็นส่วนตัว' })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: 'ข้อกำหนดการใช้งาน' })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: 'ช่วยเหลือ' })).toHaveAttribute('href', '/help')
   })
 })

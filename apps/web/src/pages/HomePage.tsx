@@ -12,7 +12,9 @@ import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 
 import { Badge, Card, EmptyState, SearchField, buttonVariants } from '../components/ui'
+import { useAuth } from '../features/auth/auth-state'
 import { Localize } from '../i18n/language'
+import { GuestHomePage } from './GuestHomePage'
 
 const principles = [
   {
@@ -46,6 +48,14 @@ const plannedEntries = [
 ]
 
 export function HomePage() {
+  const { user } = useAuth()
+
+  if (!user) return <GuestHomePage />
+
+  return <AuthenticatedHomePage />
+}
+
+function AuthenticatedHomePage() {
   const mainRef = useRef<HTMLElement>(null)
   const location = useLocation()
 
