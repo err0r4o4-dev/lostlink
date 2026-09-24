@@ -7,7 +7,7 @@ export function RequireAuth() {
   const auth = useAuth()
   const location = useLocation()
   if (auth.isLoading) return <LoadingState label="Restoring your session" />
-  if (!auth.user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!auth.user) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />
   return <Outlet />
 }
 
@@ -16,5 +16,13 @@ export function RequireStaff() {
   if (auth.isLoading) return <LoadingState label="Checking staff access" />
   if (!auth.user) return <Navigate to="/login" replace />
   if (auth.user.role !== 'staff' && auth.user.role !== 'admin') return <Navigate to="/" replace />
+  return <Outlet />
+}
+
+export function RequireAdmin() {
+  const auth = useAuth()
+  if (auth.isLoading) return <LoadingState label="Checking administrator access" />
+  if (!auth.user) return <Navigate to="/login" replace />
+  if (auth.user.role !== 'admin') return <Navigate to="/staff" replace />
   return <Outlet />
 }

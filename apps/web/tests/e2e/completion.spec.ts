@@ -20,35 +20,44 @@ async function mockAuthenticatedSession(page: import('@playwright/test').Page, r
 }
 
 const routeCases = [
-  ['/', /Lost items deserve/],
+  ['/', /Discovery tools/],
+  ['/discover', /Discovery tools/],
   ['/search', /Search LostLink/],
   ['/report', /What happened/],
   ['/report/lost', /Report a lost item/],
   ['/report/found', /Report a found item/],
+  ['/reports/report-reference/manage', /Manage report/],
   ['/items/item-reference', /Public report/],
   ['/matches', /Potential matches/],
-  ['/matches/match-reference', /Review available attributes/],
+  ['/matches/match-reference', /Review potential match/],
   ['/verification', /How ownership verification works/],
+  ['/claims', /My claims/],
   ['/claims/new', /Start a claim/],
-  ['/claims/claim-reference', /Claim details are unavailable/],
-  ['/tracking', /Track a report or claim/],
+  ['/claims/claim-reference', /Claim details/],
+  ['/tracking', /Track a report, claim, or return/],
   ['/notifications', /Notifications/],
   ['/profile', /Profile and preferences/],
   ['/help', /LostLink guide/],
   ['/locations', /Explore approximate areas/],
   ['/onboarding', /Privacy-conscious by design/],
   ['/staff', /Operations dashboard/],
-  ['/staff/reports', /Report queue/],
+  ['/staff/reports', /Report moderation/],
   ['/staff/matches', /Matching review/],
   ['/staff/claims', /Claim review/],
+  ['/staff/claims/claim-reference', /Claim review/],
+  ['/staff/returns', /Return arrangements/],
+  ['/staff/returns/return-reference', /Return arrangement/],
+  ['/admin/audit-events', /Audit events/],
   ['/login', /Sign in to LostLink/],
   ['/register', /Create your account/],
   ['/forgot-password', /Recover account access/],
   ['/reset-password', /Set a new password/],
+  ['/privacy', /ข้อมูลความเป็นส่วนตัว/],
+  ['/terms', /ข้อกำหนดการใช้งาน/],
 ] as const
 
 const viewports = [375, 390, 430, 768, 1024, 1280, 1440, 1920]
-const responsiveRoutes = ['/report/lost', '/search', '/matches/match-reference', '/claims/new', '/tracking', '/help', '/locations', '/staff/reports', '/login']
+const responsiveRoutes = ['/report/lost', '/reports/report-reference/manage', '/search', '/matches/match-reference', '/claims/new', '/claims/claim-reference', '/tracking', '/help', '/locations', '/staff/reports', '/staff/returns/return-reference', '/login']
 
 test('renders every approved frontend destination', async ({ page }) => {
   await mockAuthenticatedSession(page, 'admin')
@@ -72,7 +81,7 @@ test('keeps representative surfaces responsive at every required width', async (
   }
 })
 
-test('validates and reviews a report without pretending to submit it', async ({ page }) => {
+test('validates and reviews a report before submission', async ({ page }) => {
   await mockAuthenticatedSession(page)
   await page.goto('/report/lost')
   await page.getByRole('button', { name: 'Review report' }).click()
@@ -86,7 +95,7 @@ test('validates and reviews a report without pretending to submit it', async ({ 
   await page.getByRole('button', { name: 'Review report' }).click()
   await expect(page.getByRole('heading', { name: 'Review your report' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Submit report' })).toBeEnabled()
-  await expect(page.getByText('Private fields stay local')).toBeVisible()
+  await expect(page.getByText('Check what will be shared')).toBeVisible()
 })
 
 test('redirects unauthenticated users away from protected destinations', async ({ page }) => {
@@ -117,7 +126,34 @@ test('provides truthful authentication validation and pending state', async ({ p
   await page.getByLabel('University email or account identifier').fill('student@example.edu')
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('local-test-only')
   await page.getByRole('button', { name: /Sign in/ }).click()
-  await expect(page.getByRole('alert')).toContainText('Sign in failed')
+  const failureDialog = page.getByRole('dialog', { name: 'Sign in failed' })
+  await expect(failureDialog).toContainText('The request could not be completed')
+  await failureDialog.getByRole('button', { name: 'OK' }).click()
+  await expect(page.getByRole('alert')).toContainText('The request could not be completed')
+})
+
+test('runs matching for an owned lost report and renders ranked candidates', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+  const reportId = '11111111-1111-4111-8111-111111111111'
+  const matchId = '22222222-2222-4222-8222-222222222222'
+  await page.route('**/api/v1/reports/mine', async (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ reports: [{ id: reportId, report_type: 'lost', item_name: 'Black bottle', category: 'Drinkware', public_description: 'Black bottle with a silver lid', event_date: '2026-09-09', approximate_time: null, approximate_location: 'Library', status: 'active', created_at: '2026-09-09T00:00:00Z' }], pagination: { limit: 20, offset: 0 } }),
+  }))
+  await page.route(`**/api/v1/reports/${reportId}/matches`, async (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ matches: [] }) }))
+  await page.route(`**/api/v1/reports/${reportId}/matching-runs`, async (route) => route.fulfill({
+    status: 201,
+    contentType: 'application/json',
+    body: JSON.stringify({ run: { id: '33333333-3333-4333-8333-333333333333', report_id: reportId, status: 'completed', candidate_count: 1, created_at: '2026-09-09T00:00:00Z' }, matches: [{ id: matchId, source_report_id: reportId, score: 0.91, signals: ['text', 'location'], model_version: 'test', config_version: 'test', review_status: 'pending', created_at: '2026-09-09T00:00:00Z', candidate: { id: '44444444-4444-4444-8444-444444444444', report_type: 'found', item_name: 'Found black bottle', category: 'Drinkware', public_description: 'Bottle found near the library', event_date: '2026-09-09', approximate_location: 'Library', created_at: '2026-09-09T00:00:00Z' } }] }),
+  }))
+
+  await page.goto(`/matches?report=${reportId}`)
+  await page.getByRole('button', { name: 'Run matching' }).click()
+  const successDialog = page.getByRole('dialog', { name: 'Matching completed' })
+  await expect(successDialog).toContainText('1 potential matches are ready for review.')
+  await successDialog.getByRole('button', { name: 'OK' }).click()
+  await expect(page.getByRole('heading', { name: 'Found black bottle' })).toBeVisible()
+  await expect(page.getByText('Match score 91%')).toBeVisible()
 })
 
 test('renders a deliberate not-found state', async ({ page }) => {
@@ -130,14 +166,20 @@ test('moves focus to main content after client-side navigation', async ({ page }
   await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Report' }).click()
+  await expect(page).toHaveURL(/\/discover$/)
+  const primaryNavigation = page.getByRole('navigation', { name: 'Primary' })
+  await expect(primaryNavigation.getByRole('link', { name: 'Explore items' })).toHaveAttribute('href', '/discover')
+  await expect(primaryNavigation.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0)
+  await primaryNavigation.getByRole('link', { name: 'Report' }).click()
   await expect(page).toHaveURL(/\/report$/)
   await expect(page.getByRole('main')).toBeFocused()
 })
 
 test('switches between Thai and English next to the notification action', async ({ page }) => {
+  await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
+  await expect(page).toHaveURL(/\/discover$/)
 
   const notificationAction = page.getByRole('link', { name: 'Notifications' })
   const thaiLanguageAction = page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })
@@ -155,14 +197,14 @@ test('switches between Thai and English next to the notification action', async 
   expect(languageBox?.height).toBe(notificationBox?.height)
 
   await thaiLanguageAction.click()
-  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'เครื่องมือค้นหา' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Switch language to English' }).getByText('TH', { exact: true })).toHaveClass(/bg-brand/)
   await expect(page.getByRole('button', { name: 'Switch language to English' }).getByText('EN', { exact: true })).not.toHaveClass(/bg-brand/)
   await expect(page.locator('html')).toHaveAttribute('lang', 'th')
 
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'เครื่องมือค้นหา' })).toBeVisible()
   await page.getByRole('button', { name: 'Switch language to English' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: /Lost items deserve/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Discovery tools' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 })

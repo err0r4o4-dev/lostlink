@@ -1,51 +1,59 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { App } from '../src/App'
 
 describe('App', () => {
-  it('renders one accessible page and preserves the matching trust boundary', () => {
+  it('renders the guest home with the matching and privacy trust boundaries', () => {
     render(<App />)
 
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
-    expect(screen.getByRole('heading', { level: 1, name: /lost items deserve/i })).toBeInTheDocument()
-    expect(screen.getByText(/similarity assists discovery/i)).toBeInTheDocument()
-    expect(screen.getByText(/verification stays private/i)).toBeInTheDocument()
-    expect(screen.getByText(/humans make the decision/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /lost items.*may be waiting for you/i })).toBeInTheDocument()
+    expect(screen.getByText(/AI only assists with discovery and similarity ranking/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /without revealing more than necessary/ })).toBeInTheDocument()
+    expect(screen.getByText('Verification happens before return')).toBeInTheDocument()
   })
 
-  it('links to complete frontend workflows without inventing server results', () => {
+  it('sends guest calls to action only to authentication routes', () => {
     render(<App />)
 
-    expect(screen.getByRole('link', { name: /report a lost item/i })).toHaveAttribute('href', '/report/lost')
-    expect(screen.getByRole('link', { name: /report a found item/i })).toHaveAttribute('href', '/report/found')
-    expect(screen.getByRole('link', { name: /open search/i })).toHaveAttribute('href', '/search')
-    expect(screen.getByText(/no public items yet/i)).toBeInTheDocument()
+    const hero = screen.getByRole('heading', { level: 1 }).closest('section')
+    if (!hero) throw new Error('Expected the guest hero section')
+
+    expect(within(hero).getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/register')
+    expect(within(hero).queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Authentication' }).getElementsByTagName('a')).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
+    expect(screen.queryByRole('link', { name: /Create account/ })).not.toBeInTheDocument()
   })
 
-  it('exposes skip and section navigation landmarks', () => {
+  it('does not mount authenticated navigation for a guest session', () => {
     render(<App />)
 
-    expect(screen.getByRole('link', { name: /skip to content/i })).toHaveAttribute('href', '#main-content')
-    expect(screen.getAllByRole('navigation').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByRole('link', { name: 'Search' }).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main-content')
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Mobile primary' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Search' })).not.toBeInTheDocument()
   })
 
-  it('switches the interface between English and Thai and remembers the choice', async () => {
+  it('exposes only the requested public footer destinations', () => {
+    render(<App />)
+
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: 'Terms of use' })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help')
+  })
+
+  it('switches the guest home between English and Thai', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getAllByText('TH').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('EN').length).toBeGreaterThanOrEqual(1)
-    const languageButton = screen.getAllByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })[0]
-    expect(languageButton.querySelector('svg')).toBeNull()
-    await user.click(languageButton)
+    await user.click(screen.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' }))
 
-    expect(screen.getByRole('heading', { level: 1, name: 'ของที่หายควรมีเส้นทางกลับคืนอย่างชัดเจน' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'ค้นหา' }).length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByRole('button', { name: 'Switch language to English' }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('heading', { level: 1, name: /ของที่หาย.*อาจกำลังรอให้คุณมาพบ/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'เข้าสู่ระบบ' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('button', { name: 'Switch language to English' })).toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('lang', 'th')
-    expect(window.localStorage.getItem('lostlink-language')).toBe('th')
   })
 })

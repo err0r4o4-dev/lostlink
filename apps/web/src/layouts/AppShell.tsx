@@ -2,7 +2,8 @@ import {
   Bell,
   CircleHelp,
   Clock3,
-  Home,
+  Compass,
+  FileCheck2,
   MapPin,
   PackagePlus,
   Search,
@@ -24,10 +25,11 @@ interface NavigationItem {
 }
 
 const desktopNavigation: NavigationItem[] = [
-  { to: '/', icon: Home, label: 'Home' },
+  { to: '/discover', icon: Compass, label: 'Explore items' },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/report', icon: PackagePlus, label: 'Report' },
   { to: '/matches', icon: Sparkles, label: 'Matches' },
+  { to: '/claims', icon: FileCheck2, label: 'Claims' },
   { to: '/tracking', icon: Clock3, label: 'Tracking' },
   { to: '/locations', icon: MapPin, label: 'Locations' },
   { to: '/help', icon: CircleHelp, label: 'Help' },
@@ -39,7 +41,7 @@ const mobileNavigation: NavigationItem[] = [
   desktopNavigation[0],
   desktopNavigation[1],
   desktopNavigation[2],
-  desktopNavigation[4],
+  desktopNavigation[5],
   { to: '/profile', icon: UserRound, label: 'Profile' },
 ]
 
@@ -65,7 +67,7 @@ function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
   return <Localize><Link to={to} aria-label={label} className="ui-transition flex size-11 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"><Icon aria-hidden="true" className="size-5" /></Link></Localize>
 }
 
-function LanguageToggle() {
+export function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage()
   const label = language === 'en' ? 'เปลี่ยนภาษาเป็นไทย' : 'Switch language to English'
 
