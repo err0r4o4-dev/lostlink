@@ -10,6 +10,7 @@ import { BrandMark } from '../components/brand-mark'
 import { Button, Card, Checkbox, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, buttonVariants } from '../components/ui'
 import { ApiError } from '../api/client'
 import { useAuth } from '../features/auth/auth-state'
+import { useLanguage } from '../i18n/language'
 import { showAlert } from '../lib/alert'
 
 const identifierSchema = z.object({ identifier: z.string().trim().min(3, 'Use at least 3 characters.').max(254, 'Keep the identifier under 255 characters.') })
@@ -33,6 +34,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string>()
   const { authenticate } = useAuth()
+  const { translate } = useLanguage()
   const location = useLocation()
   const navigate = useNavigate()
   const { formState: { errors, isSubmitting }, handleSubmit, register } = useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema) })
@@ -40,12 +42,13 @@ export function LoginPage() {
     setServerError(undefined)
     try {
       await authenticate('login', values)
-      void showAlert.success('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับกลับมา')
+      await showAlert.success(translate('Signed in successfully'), translate('Welcome back to LostLink.'))
       const requested = (location.state as { from?: string } | null)?.from
       void navigate(requested?.startsWith('/') ? requested : '/profile', { replace: true })
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Sign in is temporarily unavailable.'
       setServerError(errorMessage)
+      await showAlert.error(translate('Sign in failed'), translate(errorMessage))
     }
   })
   return (
@@ -68,17 +71,19 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string>()
   const { authenticate } = useAuth()
+  const { translate } = useLanguage()
   const navigate = useNavigate()
   const { formState: { errors, isSubmitting }, handleSubmit, register } = useForm<z.infer<typeof registerSchema>>({ resolver: zodResolver(registerSchema) })
   const submit = handleSubmit(async (values) => {
     setServerError(undefined)
     try {
       await authenticate('register', { identifier: values.identifier, password: values.password })
-      void showAlert.success('สมัครสมาชิกสำเร็จ', 'บัญชีของคุณถูกสร้างเรียบร้อยแล้ว')
+      await showAlert.success(translate('Account created'), translate('Your LostLink account is ready.'))
       void navigate('/onboarding', { replace: true })
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Registration is temporarily unavailable.'
       setServerError(errorMessage)
+      await showAlert.error(translate('Registration failed'), translate(errorMessage))
     }
   })
   return (

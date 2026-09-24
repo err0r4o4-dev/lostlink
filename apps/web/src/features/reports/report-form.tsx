@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 import { FileUpload } from '../../components/file-upload'
 import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, Textarea } from '../../components/ui'
-import { Localize } from '../../i18n/language'
+import { Localize, useLanguage } from '../../i18n/language'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../auth/auth-state'
 import { createReport, type ReportRecord } from './report-api'
@@ -36,6 +36,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const { accessToken } = useAuth()
+  const { translate } = useLanguage()
   const { formState: { errors }, handleSubmit, register } = useForm<ReportValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: { approximateTime: '', identifyingDetails: '' },
@@ -57,10 +58,11 @@ export function ReportForm({ reportType }: ReportFormProps) {
         approximate_location: reviewValues.location,
       }, accessToken, idempotencyKey)
       setCreated(response.report)
-      void showAlert.success('ส่งรายงานเรียบร้อย', 'ข้อมูลของคุณถูกบันทึกเข้าระบบแล้ว')
+      await showAlert.success(translate('Report submitted'), translate('Your report has been saved.'))
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
       setSubmitError(errorMessage)
+      await showAlert.error(translate('Submission failed'), translate(errorMessage))
     } finally {
       setIsSubmitting(false)
     }

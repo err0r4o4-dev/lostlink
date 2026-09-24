@@ -1,9 +1,12 @@
 import { Bell, CircleHelp, Clock3, FileCheck2, Map, MapPin, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { FormEvent, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Button, Card, EmptyState, Input, IntegrationNotice, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
 import { RouteCard } from '../components/route-card'
 import { useAuth } from '../features/auth/auth-state'
+import { useLanguage } from '../i18n/language'
+import { showAlert } from '../lib/alert'
 
 const processGuide = [
   ['Report submitted', 'The Go API will create and validate an authoritative report record.'],
@@ -36,9 +39,34 @@ export function NotificationsPage() {
 
 export function ProfilePage() {
   const { logout, user } = useAuth()
+  const { translate } = useLanguage()
+  const navigate = useNavigate()
+
+  async function signOut() {
+    const confirmed = await showAlert.confirm(
+      translate('Sign out?'),
+      translate('You will need to sign in again to access private LostLink features.'),
+      translate('Sign out'),
+      translate('Stay signed in'),
+    )
+    if (!confirmed) return
+
+    try {
+      await logout()
+      await showAlert.success(translate('Signed out'), translate('Your LostLink session has ended.'))
+    } catch {
+      await showAlert.error(
+        translate('Sign-out incomplete'),
+        translate('The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.'),
+      )
+    } finally {
+      void navigate('/login', { replace: true })
+    }
+  }
+
   return (
     <PageContainer>
-      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." actions={<Button onClick={() => void logout()} variant="secondary">Sign out</Button>} />
+      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." actions={<Button onClick={() => void signOut()} variant="secondary">Sign out</Button>} />
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2><p className="mt-2 break-all text-caption text-text-secondary">{user?.identifier}</p><div className="mt-5"><StatusBadge>{user?.role ?? 'user'}</StatusBadge></div></Card>
         <Card className="p-5 md:p-6"><Bell aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Notification settings</h2><p className="mt-2 text-caption text-text-secondary">Preferences will appear only when their server-side purpose and defaults are approved.</p></Card>

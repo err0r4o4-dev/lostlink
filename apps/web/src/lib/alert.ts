@@ -4,26 +4,41 @@ import withReactContent from 'sweetalert2-react-content'
 const MySwal = withReactContent(Swal)
 
 const customClass = {
-  popup: 'kg-swal-popup',
-  title: 'kg-swal-title',
-  htmlContainer: 'kg-swal-text',
-  actions: 'kg-swal-actions',
-  confirmButton: 'kg-swal-button kg-swal-button-primary',
-  cancelButton: 'kg-swal-button kg-swal-button-secondary',
+  popup: 'lostlink-swal-popup',
+  title: 'lostlink-swal-title',
+  htmlContainer: 'lostlink-swal-text',
+  actions: 'lostlink-swal-actions',
+  confirmButton: 'lostlink-swal-button lostlink-swal-button-primary',
+  cancelButton: 'lostlink-swal-button lostlink-swal-button-secondary',
 }
 
-const baseOptions = {
-  customClass,
-  buttonsStyling: false,
-  confirmButtonText: 'ตกลง',
-  cancelButtonText: 'ยกเลิก',
-  reverseButtons: true, // typical for macOS/mobile styles, putting confirm on the right if shown
+function buttonLabels() {
+  const isThai = typeof document !== 'undefined' && document.documentElement.lang === 'th'
+  return {
+    cancel: isThai ? 'ยกเลิก' : 'Cancel',
+    confirm: isThai ? 'ตกลง' : 'OK',
+    delete: isThai ? 'ลบข้อมูล' : 'Delete',
+  }
+}
+
+function baseOptions() {
+  const labels = buttonLabels()
+  return {
+    customClass,
+    buttonsStyling: false,
+    confirmButtonText: labels.confirm,
+    cancelButtonText: labels.cancel,
+    reverseButtons: true,
+    allowOutsideClick: false,
+    returnFocus: true,
+    heightAuto: false,
+  }
 }
 
 export const showAlert = {
   success: (title: string, text?: string) => {
     return MySwal.fire({
-      ...baseOptions,
+      ...baseOptions(),
       icon: 'success',
       iconColor: 'var(--color-success)',
       title,
@@ -33,7 +48,7 @@ export const showAlert = {
 
   error: (title: string, text?: string) => {
     return MySwal.fire({
-      ...baseOptions,
+      ...baseOptions(),
       icon: 'error',
       iconColor: 'var(--color-error)',
       title,
@@ -43,7 +58,7 @@ export const showAlert = {
 
   info: (title: string, text?: string) => {
     return MySwal.fire({
-      ...baseOptions,
+      ...baseOptions(),
       icon: 'info',
       iconColor: 'var(--color-info)',
       title,
@@ -51,37 +66,39 @@ export const showAlert = {
     })
   },
 
-  confirm: async (title: string, text?: string, confirmText = 'ยืนยัน', cancelText = 'ยกเลิก') => {
+  confirm: async (title: string, text?: string, confirmText?: string, cancelText?: string) => {
+    const labels = buttonLabels()
     const result = await MySwal.fire({
-      ...baseOptions,
+      ...baseOptions(),
       icon: 'warning',
       iconColor: 'var(--color-warning)',
       title,
       text,
       showCancelButton: true,
-      confirmButtonText: confirmText,
-      cancelButtonText: cancelText,
+      confirmButtonText: confirmText ?? labels.confirm,
+      cancelButtonText: cancelText ?? labels.cancel,
       customClass: {
         ...customClass,
-        confirmButton: 'kg-swal-button kg-swal-button-primary',
+        confirmButton: 'lostlink-swal-button lostlink-swal-button-primary',
       }
     })
     return result.isConfirmed
   },
 
-  confirmDestructive: async (title: string, text?: string, confirmText = 'ลบข้อมูล', cancelText = 'ยกเลิก') => {
+  confirmDestructive: async (title: string, text?: string, confirmText?: string, cancelText?: string) => {
+    const labels = buttonLabels()
     const result = await MySwal.fire({
-      ...baseOptions,
+      ...baseOptions(),
       icon: 'warning',
       iconColor: 'var(--color-error)',
       title,
       text,
       showCancelButton: true,
-      confirmButtonText: confirmText,
-      cancelButtonText: cancelText,
+      confirmButtonText: confirmText ?? labels.delete,
+      cancelButtonText: cancelText ?? labels.cancel,
       customClass: {
         ...customClass,
-        confirmButton: 'kg-swal-button kg-swal-button-danger',
+        confirmButton: 'lostlink-swal-button lostlink-swal-button-danger',
       }
     })
     return result.isConfirmed

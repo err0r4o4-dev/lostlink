@@ -3,8 +3,20 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, matchRoutes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { GoogleAuthCallbackPage, LoginPage } from '../src/pages/AuthPages'
+const alertMocks = vi.hoisted(() => ({
+  success: vi.fn(() => Promise.resolve()),
+  error: vi.fn(() => Promise.resolve()),
+  info: vi.fn(() => Promise.resolve()),
+  confirm: vi.fn(() => Promise.resolve(true)),
+  confirmDestructive: vi.fn(() => Promise.resolve(true)),
+}))
+
+vi.mock('../src/lib/alert', () => ({ showAlert: alertMocks }))
+
+import { ApiError } from '../src/api/client'
+import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/AuthPages'
 import { ReportLostPage } from '../src/pages/ReportPages'
+import { ProfilePage } from '../src/pages/SupportPages'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
 import { LanguageProvider } from '../src/i18n/language'
@@ -19,7 +31,10 @@ const approvedRoutes = [
   '/auth/callback',
 ]
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.clearAllMocks()
+})
 
 const authenticatedContext = {
   accessToken: 'test-access',
@@ -27,6 +42,17 @@ const authenticatedContext = {
   isLoading: false,
   authenticate: () => Promise.resolve(),
   logout: () => Promise.resolve(),
+}
+
+async function reviewValidLostReport(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
+  await user.type(screen.getByLabelText(/^category/i), 'Drinkware')
+  await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
+  fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
+  await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
+  await user.type(screen.getByLabelText(/private identifying/i), 'Private scratch beneath the base')
+  await user.click(screen.getByRole('checkbox', { name: /kept contact information/i }))
+  await user.click(screen.getByRole('button', { name: 'Review report' }))
 }
 
 describe('frontend completion routes', () => {
@@ -44,24 +70,30 @@ describe('frontend completion routes', () => {
     expect(await screen.findByText('Enter a clear item name.')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /kept contact information/i })).toHaveAttribute('aria-invalid', 'true')
 
-    await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
-    await user.type(screen.getByLabelText(/^category/i), 'Drinkware')
-    await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
-    fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
-    await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
-    await user.type(screen.getByLabelText(/private identifying/i), 'Private scratch beneath the base')
-    await user.click(screen.getByRole('checkbox', { name: /kept contact information/i }))
-    await user.click(screen.getByRole('button', { name: 'Review report' }))
+    await reviewValidLostReport(user)
 
     expect(await screen.findByRole('heading', { name: 'Review your report' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit report' })).toBeEnabled()
     expect(screen.getByText('Private fields stay local')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Submit report' }))
     expect(await screen.findByText('Report submitted')).toBeInTheDocument()
+    expect(alertMocks.success).toHaveBeenCalledWith('Report submitted', 'Your report has been saved.')
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit
     if (typeof request.body !== 'string') throw new Error('Expected a JSON request body')
     expect(request.body).not.toContain('Private scratch')
     expect(request.body).not.toContain('identifying')
+  })
+
+  it('keeps report submission failures visible and announces them with SweetAlert', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 'request_failed', message: 'Report could not be saved' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })))
+    render(<AuthContext.Provider value={authenticatedContext}><MemoryRouter><ReportLostPage /></MemoryRouter></AuthContext.Provider>)
+
+    await reviewValidLostReport(user)
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Report could not be saved')
+    expect(alertMocks.error).toHaveBeenCalledWith('Submission failed', 'Report could not be saved')
   })
 
   it('localizes page copy, form labels, and validation feedback in Thai', async () => {
@@ -89,6 +121,81 @@ describe('frontend completion routes', () => {
     await user.type(screen.getByLabelText(/^password/i), 'local-test-only')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
     await waitFor(() => expect(fetch).toHaveBeenLastCalledWith('/api/v1/auth/login', expect.objectContaining({ method: 'POST', credentials: 'include' })))
+    expect(alertMocks.success).toHaveBeenCalledWith('Signed in successfully', 'Welcome back to LostLink.')
+  })
+
+  it('keeps authentication errors visible and announces them with SweetAlert', async () => {
+    const user = userEvent.setup()
+    const authenticate = vi.fn().mockRejectedValue(new ApiError(401, 'invalid_credentials', 'Invalid identifier or password'))
+    render(<AuthContext.Provider value={{ ...authenticatedContext, authenticate }}><MemoryRouter><LoginPage /></MemoryRouter></AuthContext.Provider>)
+
+    await user.type(screen.getByLabelText(/university email/i), 'student@example.edu')
+    await user.type(screen.getByLabelText(/^password/i), 'local-test-only')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid identifier or password')
+    expect(alertMocks.error).toHaveBeenCalledWith('Sign in failed', 'Invalid identifier or password')
+  })
+
+  it('announces successful account registration before continuing', async () => {
+    const user = userEvent.setup()
+    const authenticate = vi.fn().mockResolvedValue(undefined)
+    render(<AuthContext.Provider value={{ ...authenticatedContext, authenticate }}><MemoryRouter><RegisterPage /></MemoryRouter></AuthContext.Provider>)
+
+    await user.type(screen.getByLabelText(/university email/i), 'student@example.edu')
+    await user.type(screen.getByLabelText(/^password/i), 'local-test-only')
+    await user.type(screen.getByLabelText(/confirm password/i), 'local-test-only')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => expect(authenticate).toHaveBeenCalledWith('register', {
+      identifier: 'student@example.edu',
+      password: 'local-test-only',
+    }))
+    expect(alertMocks.success).toHaveBeenCalledWith('Account created', 'Your LostLink account is ready.')
+  })
+
+  it('requires confirmation before signing out and reports completion', async () => {
+    const user = userEvent.setup()
+    const logout = vi.fn().mockResolvedValue(undefined)
+    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    await waitFor(() => {
+      expect(alertMocks.confirm).toHaveBeenCalledWith(
+        'Sign out?',
+        'You will need to sign in again to access private LostLink features.',
+        'Sign out',
+        'Stay signed in',
+      )
+      expect(logout).toHaveBeenCalledOnce()
+      expect(alertMocks.success).toHaveBeenCalledWith('Signed out', 'Your LostLink session has ended.')
+    })
+  })
+
+  it('keeps the session when sign-out confirmation is cancelled', async () => {
+    const user = userEvent.setup()
+    const logout = vi.fn().mockResolvedValue(undefined)
+    alertMocks.confirm.mockResolvedValueOnce(false)
+    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    expect(logout).not.toHaveBeenCalled()
+    expect(alertMocks.success).not.toHaveBeenCalled()
+  })
+
+  it('warns when server-side logout cannot be confirmed', async () => {
+    const user = userEvent.setup()
+    const logout = vi.fn().mockRejectedValue(new Error('network unavailable'))
+    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    await waitFor(() => expect(alertMocks.error).toHaveBeenCalledWith(
+      'Sign-out incomplete',
+      'The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.',
+    ))
   })
 
   it('shows a generic Google callback failure without exposing provider details', () => {
