@@ -3,6 +3,7 @@ import {
   CircleHelp,
   Clock3,
   Compass,
+  FileCheck2,
   MapPin,
   PackagePlus,
   Search,
@@ -28,6 +29,7 @@ const desktopNavigation: NavigationItem[] = [
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/report', icon: PackagePlus, label: 'Report' },
   { to: '/matches', icon: Sparkles, label: 'Matches' },
+  { to: '/claims', icon: FileCheck2, label: 'Claims' },
   { to: '/tracking', icon: Clock3, label: 'Tracking' },
   { to: '/locations', icon: MapPin, label: 'Locations' },
   { to: '/help', icon: CircleHelp, label: 'Help' },
@@ -39,7 +41,7 @@ const mobileNavigation: NavigationItem[] = [
   desktopNavigation[0],
   desktopNavigation[1],
   desktopNavigation[2],
-  desktopNavigation[4],
+  desktopNavigation[5],
   { to: '/profile', icon: UserRound, label: 'Profile' },
 ]
 

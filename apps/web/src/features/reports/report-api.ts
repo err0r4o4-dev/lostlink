@@ -1,4 +1,7 @@
 import { apiRequest } from '../../api/client'
+import type { PageOptions, Pagination } from '../../api/types'
+import { pageQuery } from '../../api/types'
+import type { AuthorizedRequest } from '../auth/auth-state'
 
 export interface ReportRecord {
   id: string
@@ -9,7 +12,10 @@ export interface ReportRecord {
   event_date: string
   approximate_time: string | null
   approximate_location: string
+  status: 'active' | 'withdrawn' | 'hidden' | 'closed'
   created_at: string
+  withdrawn_at?: string | null
+  closed_at?: string | null
 }
 
 export interface CreateReportInput {
@@ -22,11 +28,23 @@ export interface CreateReportInput {
   approximate_location: string
 }
 
-export function createReport(input: CreateReportInput, accessToken: string, idempotencyKey: string) {
-  return apiRequest<{ report: ReportRecord }>('/v1/reports', {
+export type UpdateReportInput = Partial<Omit<CreateReportInput, 'report_type'>>
+
+export interface ReportImage {
+  id: string
+  content_type: 'image/jpeg' | 'image/png'
+  size_bytes: number
+  width: number
+  height: number
+  is_primary: boolean
+  created_at: string
+  content_url: string
+}
+
+export function createReport(request: AuthorizedRequest, input: CreateReportInput, idempotencyKey: string) {
+  return request<{ report: ReportRecord }>('/v1/reports', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Idempotency-Key': idempotencyKey,
     },
     body: JSON.stringify(input),
@@ -35,7 +53,7 @@ export function createReport(input: CreateReportInput, accessToken: string, idem
 
 export interface ReportPage {
   reports: ReportRecord[]
-  pagination: { limit: number; offset: number }
+  pagination: Pagination
 }
 
 export function searchReports(filters: { q?: string; category?: string; type?: 'lost' | 'found' }) {
@@ -49,4 +67,40 @@ export function searchReports(filters: { q?: string; category?: string; type?: '
 
 export function getReport(id: string) {
   return apiRequest<{ report: ReportRecord }>(`/v1/reports/${encodeURIComponent(id)}`)
+}
+
+export function listMyReports(request: AuthorizedRequest, options?: PageOptions) {
+  return request<ReportPage>(`/v1/reports/mine${pageQuery(options)}`)
+}
+
+export function updateReport(request: AuthorizedRequest, id: string, input: UpdateReportInput) {
+  return request<{ report: ReportRecord }>(`/v1/reports/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+}
+
+export function withdrawReport(request: AuthorizedRequest, id: string) {
+  return request<{ report: ReportRecord }>(`/v1/reports/${encodeURIComponent(id)}/withdraw`, { method: 'POST' })
+}
+
+export function listReportImages(reportId: string) {
+  return apiRequest<{ images: ReportImage[] }>(`/v1/reports/${encodeURIComponent(reportId)}/images`)
+}
+
+export function uploadReportImage(request: AuthorizedRequest, reportId: string, image: File) {
+  const form = new FormData()
+  form.set('image', image)
+  return request<{ image: ReportImage }>(`/v1/reports/${encodeURIComponent(reportId)}/images`, {
+    method: 'POST',
+    body: form,
+  })
+}
+
+export function deleteReportImage(request: AuthorizedRequest, reportId: string, imageId: string) {
+  return request<void>(`/v1/reports/${encodeURIComponent(reportId)}/images/${encodeURIComponent(imageId)}`, { method: 'DELETE' })
+}
+
+export function reportImageUrl(contentUrl: string) {
+  return `/api${contentUrl}`
 }

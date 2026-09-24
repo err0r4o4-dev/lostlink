@@ -4,8 +4,8 @@ import { useEffect, useId, useState, type ChangeEvent, type DragEvent } from 're
 import { Button, Notice } from './ui'
 import { Localize } from '../i18n/language'
 
-const previewLimitBytes = 5 * 1024 * 1024
-const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp']
+const previewLimitBytes = 8 * 1024 * 1024
+const acceptedTypes = ['image/jpeg', 'image/png']
 
 interface FileUploadProps {
   disabled?: boolean
@@ -26,11 +26,11 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
     setError(undefined)
     if (!nextFile) return
     if (!acceptedTypes.includes(nextFile.type)) {
-      setError('Choose a JPG, PNG, or WebP image.')
+      setError('Choose a JPG or PNG image.')
       return
     }
     if (nextFile.size > previewLimitBytes) {
-      setError('Choose an image smaller than 5 MB for the local preview.')
+      setError('Choose an image no larger than 8 MB.')
       return
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -65,7 +65,7 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="min-w-0">
             <p className="truncate text-caption font-semibold text-text-primary">{file.name}</p>
-            <p className="text-label text-text-secondary">Local preview only · {Math.ceil(file.size / 1024)} KB</p>
+            <p className="text-label text-text-secondary">Ready to upload · {Math.ceil(file.size / 1024)} KB</p>
           </div>
           <Button type="button" variant="ghost" onClick={removeFile}>
             <Trash2 aria-hidden="true" className="size-4" /> Remove
@@ -87,7 +87,7 @@ export function FileUpload({ disabled, onChange }: FileUploadProps) {
           {disabled ? <ImagePlus aria-hidden="true" className="size-6" /> : <UploadCloud aria-hidden="true" className="size-6" />}
         </span>
         <span className="mt-4 text-caption font-semibold text-text-primary">Choose an item photo or drop it here</span>
-        <span className="mt-1 text-label text-text-secondary">JPG, PNG, or WebP · local preview limit 5 MB</span>
+        <span className="mt-1 text-label text-text-secondary">JPG or PNG · maximum 8 MB</span>
       </label>
       <input id={inputId} className="sr-only" type="file" accept={acceptedTypes.join(',')} disabled={disabled} onChange={onInputChange} />
       {error && <div className="mt-3"><Notice title="Image not accepted" tone="error">{error}</Notice></div>}

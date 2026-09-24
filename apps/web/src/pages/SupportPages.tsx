@@ -1,46 +1,70 @@
 import { Bell, CircleHelp, Clock3, FileCheck2, Map, MapPin, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { FormEvent, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { Button, Card, EmptyState, Input, IntegrationNotice, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
+import { Button, Card, EmptyState, ErrorState, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
+import { NotificationItem } from '../components/notification-item'
 import { RouteCard } from '../components/route-card'
+import { TrackingTimeline } from '../components/tracking-timeline'
+import { apiErrorMessage } from '../api/error'
 import { useAuth } from '../features/auth/auth-state'
+import { getCurrentUser } from '../features/auth/auth-api'
+import { listNotifications, markAllNotificationsRead, markNotificationRead } from '../features/notifications/notification-api'
+import { getReturnArrangement, getTrackingTimeline } from '../features/tracking/tracking-api'
 import { useLanguage } from '../i18n/language'
 import { showAlert } from '../lib/alert'
 
 const processGuide = [
-  ['Report submitted', 'The Go API will create and validate an authoritative report record.'],
+  ['Report submitted', 'The Go API creates and validates an authoritative report record.'],
   ['Potential match found', 'Matching may surface candidates without deciding ownership.'],
   ['Claim and verification', 'Private evidence and authorization remain separate from matching.'],
   ['Staff review and return', 'Authorized review, pickup, return, and closure complete the process.'],
 ]
 
 export function TrackingPage() {
-  const [reference, setReference] = useState('')
-  const [requested, setRequested] = useState(false)
-  function submit(event: FormEvent) { event.preventDefault(); setRequested(true) }
+  const { request } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeReference = searchParams.get('reference') ?? ''
+  const [reference, setReference] = useState(activeReference)
+  const timeline = useQuery({ queryKey: ['tracking', activeReference], queryFn: () => getTrackingTimeline(request, activeReference), enabled: Boolean(activeReference) })
+  const returnDetails = useQuery({ queryKey: ['return-arrangement', activeReference], queryFn: () => getReturnArrangement(request, activeReference), enabled: timeline.data?.timeline.reference_type === 'return' })
+  function submit(event: FormEvent) { event.preventDefault(); setSearchParams(reference.trim() ? { reference: reference.trim() } : {}) }
   return (
     <PageContainer>
-      <PageHeader eyebrow="Your activity" title="Track a report or claim" description="Authoritative status events will come from the Go workflow service after authentication and authorization." />
+      <PageHeader eyebrow="Your activity" title="Track a report, claim, or return" description="Load the authoritative timeline visible to the active account." />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
           <Card className="p-5 md:p-6"><form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1"><Input label="Report or claim reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Enter an opaque reference" /></div><Button type="submit">Check status</Button></form></Card>
-          {requested ? <EmptyState icon={Clock3} title="Tracking integration pending" description="No status request was sent because authenticated tracking endpoints are not implemented." /> : <Card className="p-5 md:p-7"><h2 className="text-section font-semibold">Process guide</h2><ol className="mt-6 space-y-5">{processGuide.map(([title, detail], index) => <li className="grid grid-cols-[2.75rem_1fr] gap-4" key={title}><span className="flex size-11 items-center justify-center rounded-pill bg-brand-soft text-caption font-semibold text-brand">{index + 1}</span><div><h3 className="text-card font-semibold">{title}</h3><p className="mt-1 text-caption text-text-secondary">{detail}</p></div></li>)}</ol></Card>}
+          {!activeReference && <Card className="p-5 md:p-7"><h2 className="text-section font-semibold">Process guide</h2><ol className="mt-6 space-y-5">{processGuide.map(([title, detail], index) => <li className="grid grid-cols-[2.75rem_1fr] gap-4" key={title}><span className="flex size-11 items-center justify-center rounded-pill bg-brand-soft text-caption font-semibold text-brand">{index + 1}</span><div><h3 className="text-card font-semibold">{title}</h3><p className="mt-1 text-caption text-text-secondary">{detail}</p></div></li>)}</ol></Card>}
+          {timeline.isPending && activeReference && <LoadingState label="Loading tracking timeline" />}
+          {timeline.isError && <ErrorState title="Timeline unavailable" description="The reference was not found or is not visible to the active account." onRetry={() => void timeline.refetch()} />}
+          {timeline.data && <Card className="p-5 md:p-7"><div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><p className="text-caption font-semibold text-brand">{timeline.data.timeline.reference_type}</p><h2 className="mt-1 text-section font-semibold">{timeline.data.timeline.current_status.replaceAll('_', ' ')}</h2></div><StatusBadge>{timeline.data.timeline.current_status}</StatusBadge></div><TrackingTimeline events={timeline.data.timeline.events.map((event, index, events) => ({ title: event.event_type.replaceAll('_', ' '), detail: event.message, occurredAt: new Date(event.created_at).toLocaleString(), status: index === events.length - 1 ? 'current' : 'complete' }))} /></Card>}
+          {returnDetails.isError && <ErrorState title="Pickup details unavailable" description="The private return arrangement could not be loaded." onRetry={() => void returnDetails.refetch()} />}
+          {returnDetails.data && <Card className="p-5 md:p-7"><h2 className="text-card font-semibold">Private pickup arrangement</h2><dl className="mt-5 space-y-4 text-caption"><div><dt className="font-semibold text-text-secondary">Status</dt><dd className="mt-1">{returnDetails.data.return_arrangement.status}</dd></div><div><dt className="font-semibold text-text-secondary">Pickup time</dt><dd className="mt-1">{returnDetails.data.return_arrangement.pickup_at ? new Date(returnDetails.data.return_arrangement.pickup_at).toLocaleString() : 'Not scheduled'}</dd></div><div><dt className="font-semibold text-text-secondary">Pickup location</dt><dd className="mt-1">{returnDetails.data.return_arrangement.pickup_location ?? 'Not scheduled'}</dd></div></dl></Card>}
         </div>
-        <IntegrationNotice capability="Authenticated tracking history and current workflow state" />
+        <Notice title="Private workflow">Unknown or unauthorized references return a generic unavailable state to avoid exposing another user’s records.</Notice>
       </div>
     </PageContainer>
   )
 }
 
 export function NotificationsPage() {
-  return <PageContainer><PageHeader eyebrow="Updates" title="Notifications" description="Review authorized report, match, claim, and return updates in one place." /><EmptyState icon={Bell} title="No notifications loaded" description="Notification delivery, read state, timestamps, and related-item links require authenticated API support." /><div className="mt-5"><IntegrationNotice capability="Notifications and mark-read actions" /></div></PageContainer>
+  const { request } = useAuth()
+  const queryClient = useQueryClient()
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: () => listNotifications(request) })
+  const markRead = useMutation({ mutationFn: (id: string) => markNotificationRead(request, id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }) })
+  const markAll = useMutation({ mutationFn: () => markAllNotificationsRead(request), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }) })
+  const unread = notifications.data?.notifications.filter((notification) => !notification.read_at).length ?? 0
+  return <PageContainer><PageHeader eyebrow="Updates" title="Notifications" description="Review authorized report, match, claim, and return updates in one place." actions={<Button variant="secondary" disabled={!unread || markAll.isPending} onClick={() => markAll.mutate()}>{markAll.isPending ? 'Marking…' : 'Mark all read'}</Button>} />{notifications.isPending && <LoadingState label="Loading notifications" />}{notifications.isError && <ErrorState title="Notifications unavailable" description="Notifications could not be loaded." onRetry={() => void notifications.refetch()} />}{notifications.data && !notifications.data.notifications.length && <EmptyState icon={Bell} title="No notifications" description="Workflow updates will appear here when reports, claims, or returns change state." />}{notifications.data && notifications.data.notifications.length > 0 && <div className="space-y-3">{notifications.data.notifications.map((notification) => <NotificationItem key={notification.id} title={notification.title} message={notification.message} timestamp={new Date(notification.created_at).toLocaleString()} read={Boolean(notification.read_at)} relatedPath={notification.related_path} onOpen={() => { if (!notification.read_at) markRead.mutate(notification.id) }} />)}</div>}{(markRead.isError || markAll.isError) && <div className="mt-5"><Notice announce title="Notification action failed" tone="error">{apiErrorMessage(markRead.error ?? markAll.error, 'The notification could not be updated.')}</Notice></div>}</PageContainer>
 }
 
 export function ProfilePage() {
-  const { logout, user } = useAuth()
+  const { logout, request, user } = useAuth()
   const { translate } = useLanguage()
   const navigate = useNavigate()
+  const currentUser = useQuery({ queryKey: ['auth', 'me'], queryFn: () => getCurrentUser(request) })
+  const profile = currentUser.data?.user ?? user
 
   async function signOut() {
     const confirmed = await showAlert.confirm(
@@ -68,11 +92,11 @@ export function ProfilePage() {
     <PageContainer>
       <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." actions={<Button onClick={() => void signOut()} variant="secondary">Sign out</Button>} />
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2><p className="mt-2 break-all text-caption text-text-secondary">{user?.identifier}</p><div className="mt-5"><StatusBadge>{user?.role ?? 'user'}</StatusBadge></div></Card>
+        <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2>{currentUser.isPending ? <div className="mt-4"><LoadingState label="Loading account" /></div> : <><p className="mt-2 break-all text-caption text-text-secondary">{profile?.identifier}</p><div className="mt-5"><StatusBadge>{profile?.role ?? 'user'}</StatusBadge></div></>}{currentUser.isError && <p className="mt-3 text-caption text-error-strong">The account could not be refreshed from the server.</p>}</Card>
         <Card className="p-5 md:p-6"><Bell aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Notification settings</h2><p className="mt-2 text-caption text-text-secondary">Preferences will appear only when their server-side purpose and defaults are approved.</p></Card>
         <Card className="p-5 md:p-6"><ShieldCheck aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Privacy controls</h2><p className="mt-2 text-caption text-text-secondary">Retention, deletion, session, and data-access controls require authoritative backend policy.</p></Card>
       </div>
-      <section className="mt-8" aria-labelledby="profile-destinations"><h2 id="profile-destinations" className="mb-5 text-section font-semibold">More destinations</h2><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><RouteCard to="/notifications" icon={Bell} title="Notifications" description="Review account-related updates when the notification service is available." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Explore similarity-assisted discovery without treating it as proof." /><RouteCard to="/verification" icon={FileCheck2} title="Verification guide" description="Understand how private evidence and human review stay separate." /><RouteCard to="/help" icon={CircleHelp} title="Help and safety" description="Read guidance grounded in the approved product architecture." /></div></section>
+      <section className="mt-8" aria-labelledby="profile-destinations"><h2 id="profile-destinations" className="mb-5 text-section font-semibold">More destinations</h2><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><RouteCard to="/notifications" icon={Bell} title="Notifications" description="Review account-related workflow updates and mark them as read." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Run similarity-assisted discovery without treating it as proof." /><RouteCard to="/claims" icon={FileCheck2} title="My claims" description="Review private evidence, staff decisions, and claim status." /><RouteCard to="/report" icon={Clock3} title="My reports" description="Manage reports, images, withdrawal, and matching entry points." /></div></section>
       <div className="mt-5"><IntegrationNotice capability="Profile preferences, account history, and privacy actions" /></div>
     </PageContainer>
   )

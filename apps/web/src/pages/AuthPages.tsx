@@ -44,7 +44,7 @@ export function LoginPage() {
       await authenticate('login', values)
       await showAlert.success(translate('Signed in successfully'), translate('Welcome back to LostLink.'))
       const requested = (location.state as { from?: string } | null)?.from
-      void navigate(requested?.startsWith('/') ? requested : '/profile', { replace: true })
+      void navigate(requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/profile', { replace: true })
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Sign in is temporarily unavailable.'
       setServerError(errorMessage)

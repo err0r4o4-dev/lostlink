@@ -42,3 +42,7 @@ export function refreshSession() {
 export function endSession() {
   return apiRequest<void>('/v1/auth/logout', { method: 'POST' })
 }
+
+export function getCurrentUser(request: <T>(path: string, init?: RequestInit) => Promise<T>) {
+  return request<{ user: AuthUser }>('/v1/auth/me')
+}

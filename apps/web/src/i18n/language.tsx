@@ -20,6 +20,7 @@ const thaiTranslations: Record<string, string> = {
   'Search': 'ค้นหา',
   'Report': 'แจ้งของหาย/พบ',
   'Matches': 'รายการที่อาจตรงกัน',
+  'Claims': 'คำร้องขอรับของ',
   'Tracking': 'ติดตามสถานะ',
   'Locations': 'สถานที่',
   'Help': 'ช่วยเหลือ',

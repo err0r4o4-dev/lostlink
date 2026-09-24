@@ -5,11 +5,11 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { FileUpload } from '../../components/file-upload'
-import { Button, Card, Checkbox, Input, IntegrationNotice, Notice, Textarea } from '../../components/ui'
+import { Button, Card, Checkbox, Input, Notice, Textarea } from '../../components/ui'
 import { Localize, useLanguage } from '../../i18n/language'
 import { ApiError } from '../../api/client'
 import { useAuth } from '../auth/auth-state'
-import { createReport, type ReportRecord } from './report-api'
+import { createReport, uploadReportImage, type ReportRecord } from './report-api'
 import { showAlert } from '../../lib/alert'
 
 const reportSchema = z.object({
@@ -32,10 +32,12 @@ interface ReportFormProps {
 export function ReportForm({ reportType }: ReportFormProps) {
   const [reviewValues, setReviewValues] = useState<ReportValues>()
   const [created, setCreated] = useState<ReportRecord>()
+  const [image, setImage] = useState<File | null>(null)
+  const [imageUploadError, setImageUploadError] = useState<string>()
   const [submitError, setSubmitError] = useState<string>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [idempotencyKey] = useState(() => crypto.randomUUID())
-  const { accessToken } = useAuth()
+  const { request } = useAuth()
   const { translate } = useLanguage()
   const { formState: { errors }, handleSubmit, register } = useForm<ReportValues>({
     resolver: zodResolver(reportSchema),
@@ -44,11 +46,11 @@ export function ReportForm({ reportType }: ReportFormProps) {
   const eventVerb = reportType === 'lost' ? 'lost' : 'found'
 
   async function submitReport() {
-    if (!reviewValues || !accessToken) return
+    if (!reviewValues) return
     setIsSubmitting(true)
     setSubmitError(undefined)
     try {
-      const response = await createReport({
+      const response = await createReport(request, {
         report_type: reportType,
         item_name: reviewValues.itemName,
         category: reviewValues.category,
@@ -56,8 +58,15 @@ export function ReportForm({ reportType }: ReportFormProps) {
         event_date: reviewValues.eventDate,
         approximate_time: reviewValues.approximateTime,
         approximate_location: reviewValues.location,
-      }, accessToken, idempotencyKey)
+      }, idempotencyKey)
       setCreated(response.report)
+      if (image) {
+        try {
+          await uploadReportImage(request, response.report.id, image)
+        } catch (error) {
+          setImageUploadError(error instanceof ApiError ? error.message : 'The report was saved, but the image could not be uploaded.')
+        }
+      }
       await showAlert.success(translate('Report submitted'), translate('Your report has been saved.'))
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
@@ -69,7 +78,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
   }
 
   if (created) {
-    return <Notice announce title="Report submitted" tone="success">Your {created.report_type} report reference is <span className="font-semibold">{created.id}</span>. Private identifying details and the local image preview were not uploaded.</Notice>
+    return <div className="space-y-4"><Notice announce title="Report submitted" tone="success">Your {created.report_type} report reference is <span className="font-semibold">{created.id}</span>. Private identifying details were not included in the public report.</Notice>{imageUploadError && <Notice announce title="Image upload incomplete" tone="warning">{imageUploadError}</Notice>}</div>
   }
 
   if (reviewValues) {
@@ -97,12 +106,12 @@ export function ReportForm({ reportType }: ReportFormProps) {
           </dl>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button variant="secondary" onClick={() => setReviewValues(undefined)}><ArrowLeft aria-hidden="true" className="size-4" />Edit report</Button>
-            <Button disabled={isSubmitting || !accessToken} onClick={() => void submitReport()}>{isSubmitting ? 'Submitting…' : 'Submit report'}</Button>
+            <Button disabled={isSubmitting} onClick={() => void submitReport()}>{isSubmitting ? 'Submitting…' : 'Submit report'}</Button>
           </div>
           {submitError && <div className="mt-5"><Notice announce title="Submission failed" tone="error">{submitError}</Notice></div>}
         </Card>
         <div className="space-y-4">
-          <Notice title="Private fields stay local" tone="warning">Private identifying details and the image preview are not part of the report API and will not be sent.</Notice>
+          <Notice title="Check what will be shared" tone="warning">Private identifying details are not sent or stored. The selected image will be uploaded as a public report image after the report is created.</Notice>
         </div>
       </div></Localize>
     )
@@ -127,8 +136,8 @@ export function ReportForm({ reportType }: ReportFormProps) {
         </div>
         <div>
           <h2 className="text-section font-semibold">Item photo</h2>
-          <p className="mb-4 mt-2 text-caption text-text-secondary">The preview remains local. Uploading will require the private storage API.</p>
-          <FileUpload />
+          <p className="mb-4 mt-2 text-caption text-text-secondary">The image is uploaded only after the report is created successfully.</p>
+          <FileUpload onChange={setImage} />
         </div>
         <Textarea
           label="Private identifying characteristics"
@@ -146,7 +155,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
       </Card>
       <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
         <Notice title="Privacy boundary"><ShieldCheck aria-hidden="true" className="mr-1 inline size-4" />Public discovery details and private ownership evidence remain separate.</Notice>
-        <IntegrationNotice capability="Private image upload and identifying-evidence storage" />
+        <Notice title="Private evidence stays separate">Identifying characteristics are not submitted with this form. Enter them later only in an authorized claim.</Notice>
       </aside>
     </form></Localize>
   )

@@ -4,7 +4,7 @@ import { AppShell } from '../layouts/AppShell'
 import { HomeLayout } from '../layouts/HomeLayout'
 import { PublicLayout } from '../layouts/PublicLayout'
 import { HomePage } from '../pages/HomePage'
-import { RequireAuth, RequireStaff } from '../features/auth/route-guards'
+import { RequireAdmin, RequireAuth, RequireStaff } from '../features/auth/route-guards'
 
 const routes = [
   {
@@ -34,9 +34,11 @@ const routes = [
           { path: 'report', lazy: async () => ({ Component: (await import('../pages/ReportPages')).ReportHubPage }) },
           { path: 'report/lost', lazy: async () => ({ Component: (await import('../pages/ReportPages')).ReportLostPage }) },
           { path: 'report/found', lazy: async () => ({ Component: (await import('../pages/ReportPages')).ReportFoundPage }) },
+          { path: 'reports/:reportId/manage', lazy: async () => ({ Component: (await import('../pages/ReportPages')).ManageReportPage }) },
           { path: 'matches', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).MatchesPage }) },
           { path: 'matches/:matchId', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).MatchDetailPage }) },
           { path: 'verification', lazy: async () => ({ Component: (await import('../pages/ClaimPages')).VerificationGuidePage }) },
+          { path: 'claims', lazy: async () => ({ Component: (await import('../pages/ClaimPages')).ClaimsPage }) },
           { path: 'claims/new', lazy: async () => ({ Component: (await import('../pages/ClaimPages')).NewClaimPage }) },
           { path: 'claims/:claimId', lazy: async () => ({ Component: (await import('../pages/ClaimPages')).ClaimDetailPage }) },
           { path: 'tracking', lazy: async () => ({ Component: (await import('../pages/SupportPages')).TrackingPage }) },
@@ -51,6 +53,15 @@ const routes = [
           { path: 'staff/reports', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffReportsPage }) },
           { path: 'staff/matches', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffMatchesPage }) },
           { path: 'staff/claims', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffClaimsPage }) },
+          { path: 'staff/claims/:claimId', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffClaimDetailPage }) },
+          { path: 'staff/returns', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffReturnsPage }) },
+          { path: 'staff/returns/:returnId', lazy: async () => ({ Component: (await import('../pages/StaffPages')).StaffReturnDetailPage }) },
+        ],
+      },
+      {
+        element: <RequireAdmin />,
+        children: [
+          { path: 'admin/audit-events', lazy: async () => ({ Component: (await import('../pages/StaffPages')).AuditEventsPage }) },
         ],
       },
       { path: '*', lazy: async () => ({ Component: (await import('../pages/NotFoundPage')).NotFoundPage }) },

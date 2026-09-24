@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, matchRoutes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter, Route, Routes, matchRoutes, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const alertMocks = vi.hoisted(() => ({
@@ -13,22 +14,25 @@ const alertMocks = vi.hoisted(() => ({
 
 vi.mock('../src/lib/alert', () => ({ showAlert: alertMocks }))
 
-import { ApiError } from '../src/api/client'
+import { ApiError, apiBlobRequest, apiRequest } from '../src/api/client'
 import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/AuthPages'
 import { HomePage } from '../src/pages/HomePage'
+import { NewClaimPage } from '../src/pages/ClaimPages'
 import { ReportLostPage } from '../src/pages/ReportPages'
+import { StaffClaimDetailPage } from '../src/pages/StaffPages'
 import { ProfilePage } from '../src/pages/SupportPages'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
 import { LanguageProvider } from '../src/i18n/language'
 import { AuthProvider } from '../src/features/auth/auth-context'
 import { AuthContext } from '../src/features/auth/auth-state'
+import { RequireAuth } from '../src/features/auth/route-guards'
 
 const approvedRoutes = [
   '/', '/discover', '/search', '/report', '/report/lost', '/report/found', '/items/item-reference',
-  '/matches', '/matches/match-reference', '/verification', '/claims/new', '/claims/claim-reference',
+  '/reports/report-reference/manage', '/matches', '/matches/match-reference', '/verification', '/claims', '/claims/new', '/claims/claim-reference',
   '/tracking', '/notifications', '/profile', '/help', '/locations', '/onboarding', '/staff',
-  '/staff/reports', '/staff/matches', '/staff/claims', '/login', '/register', '/forgot-password', '/reset-password',
+  '/staff/reports', '/staff/matches', '/staff/claims', '/staff/claims/claim-reference', '/staff/returns', '/staff/returns/return-reference', '/admin/audit-events', '/login', '/register', '/forgot-password', '/reset-password',
   '/auth/callback', '/privacy', '/terms',
 ]
 
@@ -41,8 +45,15 @@ const authenticatedContext = {
   accessToken: 'test-access',
   user: { id: 'user-1', identifier: 'student@example.edu', role: 'user' as const, created_at: '2026-09-09T00:00:00Z' },
   isLoading: false,
+  request: <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init, { accessToken: 'test-access' }),
+  requestBlob: (path: string, init?: RequestInit) => apiBlobRequest(path, init, { accessToken: 'test-access' }),
   authenticate: () => Promise.resolve(),
   logout: () => Promise.resolve(),
+}
+
+function renderWithQuery(children: React.ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
 }
 
 async function reviewValidLostReport(user: ReturnType<typeof userEvent.setup>) {
@@ -77,6 +88,28 @@ describe('frontend completion routes', () => {
     expect(screen.queryByText('Lost items deserve a clear path home.')).not.toBeInTheDocument()
   })
 
+  it('preserves a protected destination query when redirecting to sign in', () => {
+    function LoginDestination() {
+      const location = useLocation()
+      return <p>{(location.state as { from?: string } | null)?.from}</p>
+    }
+
+    render(
+      <AuthContext.Provider value={{ ...authenticatedContext, accessToken: null, user: null }}>
+        <MemoryRouter initialEntries={['/claims/new?match=match-reference']}>
+          <Routes>
+            <Route element={<RequireAuth />}>
+              <Route path="/claims/new" element={<p>Protected claim form</p>} />
+            </Route>
+            <Route path="/login" element={<LoginDestination />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(screen.getByText('/claims/new?match=match-reference')).toBeInTheDocument()
+  })
+
   it('submits approved report fields without sending private verification details', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ report: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', report_type: 'lost', item_name: 'Black water bottle', category: 'Drinkware', public_description: 'Matte black bottle with a silver lid.', event_date: '2026-09-09', approximate_time: null, approximate_location: 'Campus library', created_at: '2026-09-09T00:00:00Z' } }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
@@ -91,7 +124,7 @@ describe('frontend completion routes', () => {
 
     expect(await screen.findByRole('heading', { name: 'Review your report' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit report' })).toBeEnabled()
-    expect(screen.getByText('Private fields stay local')).toBeInTheDocument()
+    expect(screen.getByText('Check what will be shared')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Submit report' }))
     expect(await screen.findByText('Report submitted')).toBeInTheDocument()
     expect(alertMocks.success).toHaveBeenCalledWith('Report submitted', 'Your report has been saved.')
@@ -111,6 +144,85 @@ describe('frontend completion routes', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Report could not be saved')
     expect(alertMocks.error).toHaveBeenCalledWith('Submission failed', 'Report could not be saved')
+  })
+
+  it('keeps a created claim draft reachable when saving initial evidence fails', async () => {
+    const user = userEvent.setup()
+    const claimId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ claim: { id: claimId } }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'service_unavailable', message: 'Evidence unavailable' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })))
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/claims/new?match=match-reference']}>
+          <Routes>
+            <Route path="/claims/new" element={<NewClaimPage />} />
+            <Route path="/claims/:claimId" element={<h1>Claim draft destination</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    await user.type(screen.getByRole('textbox', { name: 'Private ownership details' }), 'A private identifying mark under the item.')
+    await user.click(screen.getByRole('button', { name: 'Review claim' }))
+    await user.click(screen.getByRole('button', { name: 'Create claim draft' }))
+
+    expect(await screen.findByRole('heading', { name: 'Claim draft destination' })).toBeInTheDocument()
+    expect(alertMocks.info).toHaveBeenCalledWith('Claim draft created', 'Some evidence could not be saved. Open the draft and add the missing evidence before submitting it.')
+  })
+
+  it('matches staff claim decisions to backend state and reason rules', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ claim: {
+      id: 'claim-1',
+      match_id: 'match-1',
+      lost_report_id: 'lost-1',
+      found_report_id: 'found-1',
+      claimant_id: 'user-1',
+      status: 'submitted',
+      created_at: '2026-09-09T00:00:00Z',
+      updated_at: '2026-09-09T00:00:00Z',
+      evidence: [],
+    } }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/staff/claims/claim-1']}>
+          <Routes><Route path="/staff/claims/:claimId" element={<StaffClaimDetailPage />} /></Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(await screen.findByRole('button', { name: 'Approve claim' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Request more information' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reject claim' })).toBeDisabled()
+  })
+
+  it('does not offer staff transitions that the backend rejects from needs-more-info', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ claim: {
+      id: 'claim-1',
+      match_id: 'match-1',
+      lost_report_id: 'lost-1',
+      found_report_id: 'found-1',
+      claimant_id: 'user-1',
+      status: 'needs_more_info',
+      created_at: '2026-09-09T00:00:00Z',
+      updated_at: '2026-09-09T00:00:00Z',
+      evidence: [],
+    } }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/staff/claims/claim-1']}>
+          <Routes><Route path="/staff/claims/:claimId" element={<StaffClaimDetailPage />} /></Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(await screen.findByText('The current API does not accept another staff decision from this state.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve claim' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Request more information' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject claim' })).not.toBeInTheDocument()
   })
 
   it('localizes page copy, form labels, and validation feedback in Thai', async () => {
@@ -174,7 +286,7 @@ describe('frontend completion routes', () => {
   it('requires confirmation before signing out and reports completion', async () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockResolvedValue(undefined)
-    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
@@ -194,7 +306,7 @@ describe('frontend completion routes', () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockResolvedValue(undefined)
     alertMocks.confirm.mockResolvedValueOnce(false)
-    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
@@ -205,7 +317,7 @@ describe('frontend completion routes', () => {
   it('warns when server-side logout cannot be confirmed', async () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockRejectedValue(new Error('network unavailable'))
-    render(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
@@ -228,6 +340,6 @@ describe('frontend completion routes', () => {
     const input = screen.getByLabelText(/choose an item photo/i)
     fireEvent.change(input, { target: { files: [new File(['not-an-image'], 'evidence.txt', { type: 'text/plain' })] } })
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Choose a JPG, PNG, or WebP image.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose a JPG or PNG image.')
   })
 })
