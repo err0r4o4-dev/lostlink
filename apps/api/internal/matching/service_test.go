@@ -50,8 +50,8 @@ func (embedder *fakeEmbedder) Embed(_ context.Context, inputs []EmbeddingInput) 
 	embedder.calls++
 	items := make([]Embedding, len(inputs))
 	for index, input := range inputs {
-		vector := make([]float64, 32)
-		vector[index%32] = 1
+		vector := make([]float64, embeddingDimensions)
+		vector[index%embeddingDimensions] = 1
 		items[index] = Embedding{ID: input.ID, Vector: vector}
 	}
 	return EmbeddingResult{ModelVersion: "test-model", ConfigVersion: "test-config", Items: items}, nil
@@ -97,5 +97,29 @@ func TestRunMatchingConcealsAnotherUsersReport(t *testing.T) {
 	_, _, err := service.Run(context.Background(), principal, store.source.ID, "55555555-5555-4555-8555-555555555555")
 	if !errors.Is(err, ErrNotFound) || embedder.calls != 0 {
 		t.Fatalf("error=%v calls=%d", err, embedder.calls)
+	}
+}
+
+func TestValidateEmbeddingResultRequires384Dimensions(t *testing.T) {
+	inputs := []EmbeddingInput{{ID: "report-1", Text: "public-safe text"}}
+
+	validVector := make([]float64, embeddingDimensions)
+	validVector[0] = 1
+	if _, err := validateEmbeddingResult(inputs, EmbeddingResult{
+		ModelVersion:  "test-model",
+		ConfigVersion: "test-config",
+		Items:         []Embedding{{ID: "report-1", Vector: validVector}},
+	}); err != nil {
+		t.Fatalf("384-dimensional vector rejected: %v", err)
+	}
+
+	legacyVector := make([]float64, 32)
+	legacyVector[0] = 1
+	if _, err := validateEmbeddingResult(inputs, EmbeddingResult{
+		ModelVersion:  "legacy-model",
+		ConfigVersion: "legacy-config",
+		Items:         []Embedding{{ID: "report-1", Vector: legacyVector}},
+	}); !errors.Is(err, ErrAIUnavailable) {
+		t.Fatalf("32-dimensional vector error = %v; want %v", err, ErrAIUnavailable)
 	}
 }

@@ -69,10 +69,10 @@ func TestCompleteRunRanksOnlyCurrentEligibleCandidates(t *testing.T) {
 		}
 	})
 
-	vector := make([]float64, 32)
+	vector := make([]float64, embeddingDimensions)
 	vector[0] = 1
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO report_embeddings (report_id, embedding, model_version, config_version)
+		INSERT INTO report_embeddings_384 (report_id, embedding, model_version, config_version)
 		VALUES ($1::uuid, $2::vector, 'integration-model', 'integration-config')`, staleID, vectorLiteral(vector)); err != nil {
 		t.Fatal(err)
 	}

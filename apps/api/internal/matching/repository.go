@@ -105,7 +105,7 @@ func (repository *Repository) CompleteRun(ctx context.Context, run Run, source R
 
 	for reportID, vector := range vectors {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO report_embeddings (report_id, embedding, model_version, config_version, updated_at)
+			INSERT INTO report_embeddings_384 (report_id, embedding, model_version, config_version, updated_at)
 			VALUES ($1::uuid, $2::vector, $3, $4, now())
 			ON CONFLICT (report_id) DO UPDATE SET
 				embedding = EXCLUDED.embedding,
@@ -134,7 +134,7 @@ func (repository *Repository) CompleteRun(ctx context.Context, run Run, source R
 			           CASE WHEN lower(r.approximate_location) = lower($6) THEN 'location_similarity' END,
 			           CASE WHEN abs(r.event_date - $7::date) <= 7 THEN 'date_proximity' END
 			       ], NULL)) AS signals
-			FROM report_embeddings e
+			FROM report_embeddings_384 e
 			JOIN reports r ON r.id = e.report_id
 			WHERE e.report_id <> $2::uuid
 			  AND r.report_type = 'found'

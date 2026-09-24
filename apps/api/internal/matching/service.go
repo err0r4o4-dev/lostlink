@@ -158,7 +158,7 @@ func validateEmbeddingResult(inputs []EmbeddingInput, result EmbeddingResult) (m
 	}
 	vectors := make(map[string][]float64, len(inputs))
 	for _, item := range result.Items {
-		if _, ok := expected[item.ID]; !ok || len(item.Vector) != 32 {
+		if _, ok := expected[item.ID]; !ok || len(item.Vector) != embeddingDimensions {
 			return nil, ErrAIUnavailable
 		}
 		for _, value := range item.Vector {

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const embeddingDimensions = 384
+
 var (
 	ErrInvalid       = errors.New("invalid matching request")
 	ErrNotFound      = errors.New("match or report not found")

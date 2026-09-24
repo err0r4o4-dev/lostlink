@@ -37,4 +37,7 @@ func TestOpenAPIYAML(t *testing.T) {
 			t.Fatalf("OpenAPI document does not define %s", path)
 		}
 	}
+	if _, ok := document.Paths["/internal/v1/embeddings"]; ok {
+		t.Fatal("public OpenAPI document must not expose the internal AI embedding endpoint")
+	}
 }
