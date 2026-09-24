@@ -15,13 +15,19 @@ const viewports = [
 test('shows the public guest home and its trust boundaries', async ({ page }) => {
   await page.goto('/')
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('ของที่หาย')
-  await expect(page.getByText(/AI เป็นเพียงเครื่องมือช่วยค้นหาและจัดอันดับ/)).toBeVisible()
-  await expect(page.getByRole('heading', { name: /ไม่ต้องเปิดเผยข้อมูลเกินความจำเป็น/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'เริ่มต้นใช้งาน' })).toHaveAttribute('href', '/register')
-  await expect(page.getByRole('link', { name: 'เข้าสู่ระบบ' }).first()).toHaveAttribute('href', '/login')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Lost items')
+  await expect(page.getByText(/AI only assists with discovery and similarity ranking/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /without revealing more than necessary/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/register')
+  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login')
+  await expect(page.getByRole('link', { name: 'Create account' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Mobile primary' })).toHaveCount(0)
   await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('ของที่หาย')
+  await expect(page.getByRole('button', { name: 'Switch language to English' })).toBeVisible()
 })
 
 test('keeps the guest landing page responsive without authenticated navigation or overflow', async ({ page }) => {
@@ -47,7 +53,7 @@ test('provides keyboard access to the main content', async ({ page }) => {
   await page.goto('/')
   await page.keyboard.press('Tab')
 
-  const skipLink = page.getByRole('link', { name: 'ข้ามไปยังเนื้อหา' })
+  const skipLink = page.getByRole('link', { name: 'Skip to content' })
   await expect(skipLink).toBeFocused()
   await skipLink.press('Enter')
   await expect(page).toHaveURL(/#main-content$/)
@@ -73,10 +79,15 @@ test('uses local production fonts and touch-sized guest actions on mobile', asyn
   expect(fontFamily).toContain('Noto Sans Thai Variable')
 
   await expect(page.getByRole('navigation', { name: 'Mobile primary' })).toHaveCount(0)
-  const guestActions = page.getByRole('link', { name: /เข้าสู่ระบบ|สร้างบัญชี|เริ่มต้นใช้งาน|สร้างบัญชีฟรี/ })
+  const guestActions = page.getByRole('link', { name: /Sign in|Get started/ })
   for (const link of await guestActions.all()) {
     const box = await link.boundingBox()
     expect(box?.height).toBeGreaterThanOrEqual(44)
     expect(box?.width).toBeGreaterThanOrEqual(44)
   }
+
+  const languageButton = page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' })
+  const languageBox = await languageButton.boundingBox()
+  expect(languageBox?.height).toBeGreaterThanOrEqual(44)
+  expect(languageBox?.width).toBeGreaterThanOrEqual(44)
 })

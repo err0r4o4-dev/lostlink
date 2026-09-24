@@ -65,7 +65,7 @@ function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
   return <Localize><Link to={to} aria-label={label} className="ui-transition flex size-11 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"><Icon aria-hidden="true" className="size-5" /></Link></Localize>
 }
 
-function LanguageToggle() {
+export function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage()
   const label = language === 'en' ? 'เปลี่ยนภาษาเป็นไทย' : 'Switch language to English'
 

@@ -14,48 +14,49 @@ import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { buttonVariants } from '../components/ui'
+import { Localize } from '../i18n/language'
 
 const steps = [
   {
     number: '01',
-    title: 'แจ้งรายละเอียดสิ่งของ',
-    description: 'กรอกข้อมูลเกี่ยวกับสิ่งของที่หายหรือพบ เช่น ประเภท สี ลักษณะ และช่วงเวลาที่เกี่ยวข้อง',
+    title: 'Report item details',
+    description: 'Enter details about the lost or found item, such as its category, color, appearance, and relevant time period.',
   },
   {
     number: '02',
-    title: 'ค้นหารายการที่อาจตรงกัน',
-    description: 'ระบบจะช่วยเปรียบเทียบข้อมูลและจัดอันดับรายการที่มีรายละเอียดใกล้เคียง เพื่อให้ค้นหาได้ง่ายขึ้น',
+    title: 'Find potentially matching items',
+    description: 'The system compares information and ranks items with similar details to make discovery easier.',
   },
   {
     number: '03',
-    title: 'ตรวจสอบและรับคืน',
-    description: 'เมื่อพบรายการที่อาจเป็นของคุณ ระบบจะพาเข้าสู่ขั้นตอนตรวจสอบความเป็นเจ้าของก่อนดำเนินการรับคืน',
+    title: 'Verify and collect',
+    description: 'When a potentially related item is found, the system guides you through ownership verification before return.',
   },
 ]
 
 const trustItems = [
   {
     icon: LockKeyhole,
-    title: 'ข้อมูลส่วนตัวถูกจำกัดการเปิดเผย',
-    description: 'ชื่อ ข้อมูลติดต่อ และข้อมูลส่วนตัวจะไม่ถูกแสดงต่อสาธารณะโดยไม่จำเป็น',
+    title: 'Personal information has limited exposure',
+    description: 'Names, contact details, and personal information are not shown publicly unless necessary.',
   },
   {
     icon: MapPin,
-    title: 'ตำแหน่งละเอียดไม่แสดงต่อสาธารณะ',
-    description: 'ระบบแสดงข้อมูลสถานที่เฉพาะระดับที่เหมาะสม เพื่อลดการเปิดเผยข้อมูลที่ไม่จำเป็น',
+    title: 'Precise locations are not public',
+    description: 'The system displays location information only at an appropriate level to reduce unnecessary exposure.',
   },
   {
     icon: ShieldCheck,
-    title: 'ตรวจสอบก่อนรับของคืน',
-    description: 'การพบรายการที่คล้ายกันยังไม่ถือว่าเป็นเจ้าของ ผู้ใช้งานต้องผ่านขั้นตอนตรวจสอบก่อนการรับคืน',
+    title: 'Verification happens before return',
+    description: 'Finding a similar item does not establish ownership. Users must complete verification before return.',
   },
 ]
 
 function CampusLostItemVisual() {
   return (
-    <div
+    <Localize><div
       role="img"
-      aria-label="ภาพประกอบกระเป๋า บัตร และแก้วน้ำ ซึ่งเป็นตัวอย่างสิ่งของที่อาจพบในมหาวิทยาลัย"
+      aria-label="Illustration of a backpack, identification card, and drink cup as example items that may be found on campus."
       className="relative mx-auto w-full max-w-xl px-3 py-6 md:px-8 md:py-10"
     >
       <div aria-hidden="true" className="absolute right-0 top-0 size-36 rounded-full bg-brand-soft opacity-80 blur-sm md:size-48" />
@@ -90,7 +91,7 @@ function CampusLostItemVisual() {
         <div className="mt-4 flex justify-end">
           <span className="inline-flex items-center gap-2 rounded-pill bg-brand-soft px-4 py-2 text-label font-semibold text-brand">
             <Search aria-hidden="true" className="size-4" />
-            ค้นหารายการที่อาจเกี่ยวข้อง
+            Search potentially related items
           </span>
         </div>
       </div>
@@ -98,13 +99,13 @@ function CampusLostItemVisual() {
       <span className="absolute bottom-2 left-0 flex size-12 items-center justify-center rounded-feature border border-border bg-surface text-brand shadow-card md:bottom-8 md:size-14">
         <KeyRound aria-hidden="true" className="size-6" />
       </span>
-    </div>
+    </div></Localize>
   )
 }
 
 function StepCard({ number, title, description, wide = false }: (typeof steps)[number] & { wide?: boolean }) {
   return (
-    <li className={`rounded-card border border-border bg-surface-secondary p-5 md:p-6 ${wide ? 'md:col-span-2 lg:col-span-1' : ''}`}>
+    <li className={`rounded-card border border-border bg-surface-secondary p-5 md:p-6 ${wide ? 'md:col-span-2 xl:col-span-1' : ''}`}>
       <p aria-hidden="true" className="text-page-mobile font-bold leading-none text-brand/20">{number}</p>
       <h3 className="mt-5 text-card font-semibold text-text-primary">{title}</h3>
       <p className="mt-2 text-caption text-text-secondary">{description}</p>
@@ -121,33 +122,30 @@ export function GuestHomePage() {
   }, [location.key])
 
   return (
-    <main ref={mainRef} id="main-content" tabIndex={-1} className="focus:outline-none">
+    <Localize><main ref={mainRef} id="main-content" tabIndex={-1} className="focus:outline-none">
       <section aria-labelledby="guest-home-title" className="relative overflow-hidden border-b border-border">
         <div aria-hidden="true" className="absolute -right-24 top-12 size-72 rounded-full bg-brand-soft/70 blur-3xl" />
-        <div className="relative mx-auto grid w-full items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:w-4/5 lg:grid-cols-[1.08fr_0.92fr] lg:px-0 lg:py-24">
+        <div className="relative mx-auto grid w-full items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:w-[70%] lg:px-0 lg:py-24 xl:grid-cols-[1.08fr_0.92fr]">
           <div>
             <p className="inline-flex rounded-pill bg-brand-soft px-4 py-2 text-label font-semibold text-brand">
-              Lost &amp; Found สำหรับมหาวิทยาลัย
+              Lost &amp; Found for universities
             </p>
-            <h1 id="guest-home-title" className="mt-6 max-w-3xl text-page-mobile font-bold tracking-tight text-balance text-text-primary md:text-page lg:text-display">
-              ของที่หาย<br />อาจกำลังรอให้คุณมาพบ
+            <h1 id="guest-home-title" className="mt-6 max-w-3xl text-page-mobile font-bold tracking-tight text-balance text-text-primary md:text-page">
+              Lost items<br />may be waiting for you to find them
             </h1>
             <p className="mt-5 max-w-2xl text-body text-text-secondary-strong md:text-lead">
-              LostLink ช่วยเชื่อมคนที่ทำของหายกับคนที่พบของภายในมหาวิทยาลัย ให้การค้นหา ตรวจสอบ และรับของคืนเป็นเรื่องที่ง่ายและปลอดภัยมากขึ้น
+              LostLink connects people who lost items with people who found them on campus, making discovery, verification, and return easier and safer.
             </p>
             <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
               <Link to="/register" className={`${buttonVariants({ variant: 'primary' })} min-h-12 sm:min-w-44`}>
-                เริ่มต้นใช้งาน
+                Get started
                 <ArrowRight aria-hidden="true" className="size-4" />
-              </Link>
-              <Link to="/login" className={`${buttonVariants({ variant: 'secondary' })} min-h-12 sm:min-w-36`}>
-                เข้าสู่ระบบ
               </Link>
             </div>
             <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-secondary">
-              <span>ใช้งานง่าย</span><span aria-hidden="true">·</span>
-              <span>เคารพความเป็นส่วนตัว</span><span aria-hidden="true">·</span>
-              <span>มีขั้นตอนตรวจสอบก่อนรับคืน</span>
+              <span>Easy to use</span><span aria-hidden="true">·</span>
+              <span>Respects privacy</span><span aria-hidden="true">·</span>
+              <span>Verification before return</span>
             </p>
           </div>
 
@@ -156,43 +154,43 @@ export function GuestHomePage() {
       </section>
 
       <section aria-labelledby="how-it-works-title" className="bg-surface py-16 md:py-20 lg:py-24">
-        <div className="mx-auto w-full px-5 md:px-7 lg:w-4/5 lg:px-0">
+        <div className="mx-auto w-full px-5 md:px-7 lg:w-[70%] lg:px-0">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-caption font-semibold text-brand">วิธีการใช้งาน</p>
+            <p className="text-caption font-semibold text-brand">How it works</p>
             <h2 id="how-it-works-title" className="mt-2 text-page-mobile font-bold tracking-tight text-text-primary md:text-page">
-              ตามหาของได้ง่ายขึ้นใน 3 ขั้นตอน
+              Find lost items more easily in 3 steps
             </h2>
             <p className="mt-3 text-body text-text-secondary">
-              LostLink ช่วยลดเวลาที่ต้องค้นหาด้วยตัวเอง และช่วยนำรายการที่อาจเกี่ยวข้องมาให้คุณตรวจสอบ
+              LostLink reduces time spent searching manually and brings potentially related items forward for review.
             </p>
           </div>
 
-          <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ol className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {steps.map((step, index) => <StepCard key={step.number} {...step} wide={index === 2} />)}
           </ol>
 
           <div className="mt-5 flex items-start gap-3 rounded-card border border-brand/10 bg-brand-soft/70 px-4 py-4 text-caption text-brand md:items-center md:px-5">
             <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 md:mt-0" />
             <p>
-              <strong className="font-semibold">AI เป็นเพียงเครื่องมือช่วยค้นหาและจัดอันดับความใกล้เคียงของรายการ</strong>{' '}
-              ผลการจับคู่ไม่ถือเป็นหลักฐานยืนยันความเป็นเจ้าของ
+              <strong className="font-semibold">AI only assists with discovery and similarity ranking.</strong>{' '}
+              A potential match is not proof of ownership.
             </p>
           </div>
         </div>
       </section>
 
       <section aria-labelledby="privacy-title" className="py-16 md:py-20 lg:py-24">
-        <div className="mx-auto w-full px-5 md:px-7 lg:w-4/5 lg:px-0">
+        <div className="mx-auto w-full px-5 md:px-7 lg:w-[70%] lg:px-0">
           <div className="rounded-overlay border border-border bg-surface p-6 shadow-card md:p-10">
             <p className="text-caption font-semibold text-brand">Privacy by design</p>
             <h2 id="privacy-title" className="mt-2 max-w-4xl text-page-mobile font-bold tracking-tight text-text-primary md:text-page">
-              ตามหาของ โดยไม่ต้องเปิดเผยข้อมูลเกินความจำเป็น
+              Find lost items without revealing more than necessary
             </h2>
             <p className="mt-3 max-w-3xl text-body text-text-secondary">
-              LostLink ออกแบบให้ข้อมูลที่ใช้ค้นหาแยกออกจากข้อมูลส่วนตัวที่ไม่จำเป็นต้องแสดงต่อสาธารณะ
+              LostLink separates discovery information from personal data that does not need to be public.
             </p>
 
-            <div className="mt-9 grid gap-7 md:grid-cols-3 md:gap-6">
+            <div className="mt-9 grid gap-7 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
               {trustItems.map(({ icon: Icon, title, description }) => (
                 <article key={title} className="flex gap-4 md:block">
                   <span className="flex size-12 shrink-0 items-center justify-center rounded-feature bg-brand-soft text-brand">
@@ -209,6 +207,6 @@ export function GuestHomePage() {
         </div>
       </section>
 
-    </main>
+    </main></Localize>
   )
 }
