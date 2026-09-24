@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   Backpack,
-  Check,
   CupSoda,
   IdCard,
   KeyRound,
@@ -125,7 +124,7 @@ export function GuestHomePage() {
     <main ref={mainRef} id="main-content" tabIndex={-1} className="focus:outline-none">
       <section aria-labelledby="guest-home-title" className="relative overflow-hidden border-b border-border">
         <div aria-hidden="true" className="absolute -right-24 top-12 size-72 rounded-full bg-brand-soft/70 blur-3xl" />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-24">
+        <div className="relative mx-auto grid w-full items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:w-4/5 lg:grid-cols-[1.08fr_0.92fr] lg:px-0 lg:py-24">
           <div>
             <p className="inline-flex rounded-pill bg-brand-soft px-4 py-2 text-label font-semibold text-brand">
               Lost &amp; Found สำหรับมหาวิทยาลัย
@@ -157,7 +156,7 @@ export function GuestHomePage() {
       </section>
 
       <section aria-labelledby="how-it-works-title" className="bg-surface py-16 md:py-20 lg:py-24">
-        <div className="mx-auto max-w-7xl px-5 md:px-7 lg:px-8">
+        <div className="mx-auto w-full px-5 md:px-7 lg:w-4/5 lg:px-0">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-caption font-semibold text-brand">วิธีการใช้งาน</p>
             <h2 id="how-it-works-title" className="mt-2 text-page-mobile font-bold tracking-tight text-text-primary md:text-page">
@@ -183,7 +182,7 @@ export function GuestHomePage() {
       </section>
 
       <section aria-labelledby="privacy-title" className="py-16 md:py-20 lg:py-24">
-        <div className="mx-auto max-w-7xl px-5 md:px-7 lg:px-8">
+        <div className="mx-auto w-full px-5 md:px-7 lg:w-4/5 lg:px-0">
           <div className="rounded-overlay border border-border bg-surface p-6 shadow-card md:p-10">
             <p className="text-caption font-semibold text-brand">Privacy by design</p>
             <h2 id="privacy-title" className="mt-2 max-w-4xl text-page-mobile font-bold tracking-tight text-text-primary md:text-page">
@@ -210,36 +209,6 @@ export function GuestHomePage() {
         </div>
       </section>
 
-      <section aria-labelledby="final-cta-title" className="pb-16 md:pb-20">
-        <div className="mx-auto max-w-7xl px-5 md:px-7 lg:px-8">
-          <div className="relative overflow-hidden rounded-overlay bg-brand px-6 py-10 text-center text-on-brand shadow-floating md:px-10 md:py-12">
-            <div aria-hidden="true" className="absolute -left-10 -top-12 size-40 rounded-full bg-on-brand/5" />
-            <div aria-hidden="true" className="absolute -bottom-24 -right-12 size-56 rounded-full bg-on-brand/5" />
-            <div className="relative mx-auto max-w-3xl">
-              <h2 id="final-cta-title" className="text-page-mobile font-bold tracking-tight md:text-page">
-                พร้อมตามหาของของคุณหรือยัง?
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-body text-on-brand/80">
-                สร้างบัญชีเพื่อเริ่มแจ้งข้อมูล ค้นหารายการที่อาจเกี่ยวข้อง และดำเนินการผ่านขั้นตอนตรวจสอบของ LostLink
-              </p>
-              <div className="mt-7 grid gap-3 sm:flex sm:justify-center">
-                <Link to="/register" className={`${buttonVariants({ variant: 'secondary' })} min-h-12 sm:min-w-44`}>
-                  สร้างบัญชีฟรี
-                </Link>
-                <Link
-                  to="/login"
-                  className="ui-transition inline-flex min-h-12 items-center justify-center rounded-control border border-on-brand/60 px-5 py-3 text-caption font-semibold text-on-brand hover:bg-on-brand/10 sm:min-w-36"
-                >
-                  เข้าสู่ระบบ
-                </Link>
-              </div>
-              <p className="mt-6 inline-flex items-center justify-center gap-2 text-caption text-on-brand/75">
-                <Check aria-hidden="true" className="size-4" /> เริ่มต้นได้โดยไม่แสดงข้อมูลส่วนตัวต่อสาธารณะ
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
   )
 }

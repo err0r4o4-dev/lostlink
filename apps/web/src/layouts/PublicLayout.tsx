@@ -28,7 +28,7 @@ export function PublicLayout() {
       </a>
 
       <header className="safe-area-top sticky top-0 z-navigation border-b border-border bg-surface">
-        <div className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-3 px-5 md:px-7 lg:px-8">
+        <div className="mx-auto flex min-h-18 w-full items-center justify-between gap-3 px-5 md:px-7 lg:w-4/5 lg:px-0">
           <PublicBrand />
           <nav className="flex items-center gap-2 md:gap-3" aria-label="การเข้าสู่ระบบ">
             <Link
@@ -47,7 +47,7 @@ export function PublicLayout() {
       <Outlet />
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:px-7 lg:px-8">
+        <div className="mx-auto grid w-full gap-8 px-5 py-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:px-7 lg:w-4/5 lg:px-0">
           <div>
             <PublicBrand />
             <p className="mt-3 max-w-xl text-caption text-text-secondary">
