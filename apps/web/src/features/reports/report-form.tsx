@@ -1,13 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { QueryClientContext } from '@tanstack/react-query'
 import { ArrowLeft, Eye, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { FileUpload } from '../../components/file-upload'
 import { Button, Card, Checkbox, Input, Notice, Textarea } from '../../components/ui'
 import { Localize, useLanguage } from '../../i18n/language'
 import { ApiError } from '../../api/client'
+import { queryClient as defaultQueryClient } from '../../lib/query-client'
 import { useAuth } from '../auth/auth-state'
 import { createReport, uploadReportImage, type ReportRecord } from './report-api'
 import { showAlert } from '../../lib/alert'
@@ -30,6 +33,9 @@ interface ReportFormProps {
 }
 
 export function ReportForm({ reportType }: ReportFormProps) {
+  const navigate = useNavigate()
+  const contextClient = useContext(QueryClientContext)
+  const queryClient = contextClient ?? defaultQueryClient
   const [reviewValues, setReviewValues] = useState<ReportValues>()
   const [created, setCreated] = useState<ReportRecord>()
   const [image, setImage] = useState<File | null>(null)
@@ -67,7 +73,9 @@ export function ReportForm({ reportType }: ReportFormProps) {
           setImageUploadError(error instanceof ApiError ? error.message : 'The report was saved, but the image could not be uploaded.')
         }
       }
+      await queryClient.invalidateQueries({ queryKey: ['reports'] })
       await showAlert.success(translate('Report submitted'), translate('Your report has been saved.'))
+      navigate('/report')
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
       setSubmitError(errorMessage)
