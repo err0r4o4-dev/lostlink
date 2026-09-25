@@ -53,10 +53,12 @@ export function SearchPage() {
         <Badge>{results.data ? `${results.data.reports.length} results` : searched ? 'Searching' : 'Search not started'}</Badge>
       </div>
       <div className="mt-5">
-        {!searched && <EmptyState icon={PackageSearch} title="Start with an item description" description="Search by visible item details, category, or an approximate campus area." />}
+        {!searched && (!results.data || results.data.reports.length === 0) && !results.isLoading && !results.isError && (
+          <EmptyState icon={PackageSearch} title="Start with an item description" description="Search by visible item details, category, or an approximate campus area." />
+        )}
         {results.isLoading && <LoadingState label="Searching public reports" />}
         {results.isError && <ErrorState description="Public reports could not be loaded." onRetry={() => void results.refetch()} />}
-        {results.data?.reports.length === 0 && <EmptyState icon={PackageSearch} title="No reports found" description="Try a broader public-safe description or a different category." />}
+        {searched && results.data?.reports.length === 0 && <EmptyState icon={PackageSearch} title="No reports found" description="Try a broader public-safe description or a different category." />}
         {results.data && results.data.reports.length > 0 && <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{results.data.reports.map((report) => <ItemCard key={report.id} item={{ id: report.id, reportType: report.report_type, title: report.item_name, category: report.category, location: report.approximate_location, dateLabel: report.event_date }} />)}</div>}
       </div>
     </PageContainer>

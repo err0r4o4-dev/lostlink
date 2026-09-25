@@ -17,6 +17,7 @@ vi.mock('../src/lib/alert', () => ({ showAlert: alertMocks }))
 import { ApiError, apiBlobRequest, apiRequest } from '../src/api/client'
 import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/AuthPages'
 import { HomePage } from '../src/pages/HomePage'
+import { SearchPage } from '../src/pages/DiscoveryPages'
 import { NewClaimPage } from '../src/pages/ClaimPages'
 import { ReportLostPage } from '../src/pages/ReportPages'
 import { StaffClaimDetailPage } from '../src/pages/StaffPages'
@@ -341,5 +342,48 @@ describe('frontend completion routes', () => {
     fireEvent.change(input, { target: { files: [new File(['not-an-image'], 'evidence.txt', { type: 'text/plain' })] } })
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose a JPG or PNG image.')
+  })
+
+  it('renders search placeholder initially and hides it when results exist in cache', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    // 1. Initial state (no search done, empty cache) -> shows placeholder
+    const { unmount } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText('Start with an item description')).toBeInTheDocument()
+    expect(screen.getByText('Search not started')).toBeInTheDocument()
+    unmount()
+
+    // 2. Returning to /search with cached results -> does not show placeholder banner, shows result cards
+    client.setQueryData(['reports', { q: undefined, category: undefined, type: undefined }], {
+      reports: [
+        {
+          id: 'report-1',
+          report_type: 'lost',
+          item_name: 'Blue Backpack',
+          category: 'Bags',
+          approximate_location: 'Central Library',
+          event_date: '2026-09-20',
+        },
+      ],
+    })
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByText('Start with an item description')).not.toBeInTheDocument()
+    expect(screen.getByText('Blue Backpack')).toBeInTheDocument()
+    expect(screen.getByText('1 results')).toBeInTheDocument()
   })
 })
