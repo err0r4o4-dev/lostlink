@@ -75,7 +75,7 @@ export function ReportForm({ reportType }: ReportFormProps) {
       }
       await queryClient.invalidateQueries({ queryKey: ['reports'] })
       await showAlert.success(translate('Report submitted'), translate('Your report has been saved.'))
-      navigate('/report')
+      void navigate('/report')
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
       setSubmitError(errorMessage)
