@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
@@ -22,7 +23,6 @@ import (
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/server"
 	objectstorage "github.com/err0r4o4-dev/lostlink/apps/api/internal/storage"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
-	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 )
 
 func main() {
@@ -97,7 +97,7 @@ func main() {
 		Handler: server.New(os.Stdout, server.Options{
 			Auth: authService, Reports: reportService, Matching: matchingService, Claims: claimService,
 			Tracking: trackingService, Notifications: notificationService, Admin: adminRepository,
-			AIChat: aichatService,
+			AIChat:    aichatService,
 			WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,

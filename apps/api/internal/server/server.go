@@ -8,13 +8,13 @@ import (
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/notification"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
-	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 	"github.com/gin-gonic/gin"
 	"github.com/watchakorn-18k/scalar-go"
 )

@@ -1,25 +1,31 @@
-from typing import List, Optional, Any, Dict
+from typing import Annotated, Literal
+from uuid import UUID
+
 from pydantic import BaseModel, Field
+
+MessageContent = Annotated[str, Field(min_length=1, max_length=4000)]
+Keyword = Annotated[str, Field(min_length=1, max_length=100)]
+MatchedItemID = Annotated[str, Field(min_length=1, max_length=100)]
 
 
 class ChatMessage(BaseModel):
-    role: str = Field(..., description="The role of the message sender, e.g., 'user', 'ai', 'system'")
-    content: str = Field(..., description="The content of the message")
+    role: Literal["user", "ai"]
+    content: MessageContent
 
 
 class ChatRequest(BaseModel):
-    messages: List[ChatMessage] = Field(..., description="History of chat messages, with the latest user message at the end")
-    session_id: Optional[str] = Field(None, description="The session ID of the chat if available")
+    messages: list[ChatMessage] = Field(min_length=1, max_length=100)
+    session_id: UUID | None = None
 
 
 class ChatAnalysis(BaseModel):
-    extracted_keywords: List[str] = Field(default_factory=list, description="Keywords extracted from the user's latest query")
-    reasoning: Optional[str] = Field(None, description="The AI's reasoning for the provided response")
-    matched_item_ids: List[str] = Field(default_factory=list, description="Any potential matches found in the context")
-    confidence_score: Optional[float] = Field(None, description="Confidence score of the response or match (0.0 to 1.0)")
+    extracted_keywords: list[Keyword] = Field(default_factory=list, max_length=20)
+    reasoning: str | None = Field(default=None, max_length=2000)
+    matched_item_ids: list[MatchedItemID] = Field(default_factory=list, max_length=100)
+    confidence_score: float | None = Field(default=None, ge=0, le=1)
 
 
 class ChatResponse(BaseModel):
-    reply: str = Field(..., description="The AI's reply to the user")
-    generated_title: Optional[str] = Field(None, description="A generated title for the chat session. Expected on the first message.")
-    analysis: Optional[ChatAnalysis] = Field(None, description="Analytical metadata for staff review and audit")
+    reply: str = Field(min_length=1, max_length=4000)
+    generated_title: str | None = Field(default=None, max_length=200)
+    analysis: ChatAnalysis | None = None

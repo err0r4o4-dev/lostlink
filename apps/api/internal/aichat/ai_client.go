@@ -55,8 +55,8 @@ func (client *AIClient) GenerateChat(ctx context.Context, request ChatRequest) (
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return nil, fmt.Errorf("%w: status %d, %s", ErrAIUnavailable, response.StatusCode, string(b))
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
+		return nil, fmt.Errorf("%w: status %d", ErrAIUnavailable, response.StatusCode)
 	}
 
 	var result ChatResponse
