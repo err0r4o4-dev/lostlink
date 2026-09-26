@@ -38,6 +38,7 @@ const approvedRoutes = [
 ]
 
 afterEach(() => {
+  window.localStorage.clear()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
 })
@@ -59,7 +60,7 @@ function renderWithQuery(children: React.ReactNode) {
 
 async function reviewValidLostReport(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
-  await user.type(screen.getByLabelText(/^category/i), 'Drinkware')
+  await user.selectOptions(screen.getByLabelText(/^category/i), 'Personal Items')
   await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
   fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
   await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
@@ -145,6 +146,55 @@ describe('frontend completion routes', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Report could not be saved')
     expect(alertMocks.error).toHaveBeenCalledWith('Submission failed', 'Report could not be saved')
+  })
+
+  it('validates required category selection and dynamic other category specification in report form', async () => {
+    const user = userEvent.setup()
+    render(
+      <LanguageProvider>
+        <AuthContext.Provider value={authenticatedContext}>
+          <MemoryRouter>
+            <ReportLostPage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </LanguageProvider>,
+    )
+
+    const categorySelect = screen.getByLabelText(/^category/i)
+    expect(categorySelect).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Select a category' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Electronics' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Other' })).toBeInTheDocument()
+
+    // Initially "Please specify" is not rendered
+    expect(screen.queryByLabelText(/please specify/i)).not.toBeInTheDocument()
+
+    // Select "Other" -> "Please specify" appears
+    await user.selectOptions(categorySelect, 'Other')
+    const pleaseSpecifyInput = screen.getByLabelText(/please specify/i)
+    expect(pleaseSpecifyInput).toBeInTheDocument()
+    expect(pleaseSpecifyInput).toHaveAttribute('placeholder', 'e.g. umbrella, calculator, water bottle')
+
+    // Form submission without filling Other triggers validation
+    await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
+    await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
+    fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
+    await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
+    await user.click(screen.getByRole('checkbox', { name: /kept contact information/i }))
+    await user.click(screen.getByRole('button', { name: 'Review report' }))
+    expect(await screen.findByText('Please specify the item.')).toBeInTheDocument()
+
+    // Type in custom other category
+    await user.type(pleaseSpecifyInput, 'Calculator')
+    expect(pleaseSpecifyInput).toHaveValue('Calculator')
+
+    // Switching category hides and clears "Please specify"
+    await user.selectOptions(categorySelect, 'Electronics')
+    expect(screen.queryByLabelText(/please specify/i)).not.toBeInTheDocument()
+
+    // Switch back to "Other" -> field is cleared
+    await user.selectOptions(categorySelect, 'Other')
+    expect(screen.getByLabelText(/please specify/i)).toHaveValue('')
   })
 
   it('keeps a created claim draft reachable when saving initial evidence fails', async () => {
@@ -385,6 +435,48 @@ describe('frontend completion routes', () => {
     expect(screen.queryByText('Start with an item description')).not.toBeInTheDocument()
     expect(screen.getByText('Blue Backpack')).toBeInTheDocument()
     expect(screen.getByText('1 results')).toBeInTheDocument()
+  })
+
+  it('supports category dropdown selection and dynamic other input specification', async () => {
+    const user = userEvent.setup()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    // Category select should have all options
+    const categorySelect = screen.getByLabelText(/^category/i)
+    expect(categorySelect).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Any category' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Electronics' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Bags & Backpacks' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Other' })).toBeInTheDocument()
+
+    // Initially "Item type" input should not be visible
+    expect(screen.queryByPlaceholderText('Please specify the item')).not.toBeInTheDocument()
+
+    // Select "Other" -> dynamic input should appear
+    await user.selectOptions(categorySelect, 'Other')
+    const otherInput = screen.getByPlaceholderText('Please specify the item')
+    expect(otherInput).toBeInTheDocument()
+
+    // Type in custom item specification
+    await user.type(otherInput, 'Scientific Calculator')
+    expect(otherInput).toHaveValue('Scientific Calculator')
+
+    // Switch to another category -> other input should disappear
+    await user.selectOptions(categorySelect, 'Electronics')
+    expect(screen.queryByPlaceholderText('Please specify the item')).not.toBeInTheDocument()
+
+    // Switch back to "Other" -> custom text should have been cleared
+    await user.selectOptions(categorySelect, 'Other')
+    const newOtherInput = screen.getByPlaceholderText('Please specify the item')
+    expect(newOtherInput).toHaveValue('')
   })
 
   it('prompts confirmation and deletes a report from My reports list', async () => {
