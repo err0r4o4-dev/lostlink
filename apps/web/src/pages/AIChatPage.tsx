@@ -274,7 +274,7 @@ export function AIChatPage() {
         el.style.height = `${newHeight}px`;
         el.style.overflowY = newHeight >= 200 ? 'auto' : 'hidden';
       }
-    }, 0)
+    }, 10)
   }
 
   const handleCancelEdit = () => {
@@ -465,8 +465,13 @@ export function AIChatPage() {
                                     handleSaveEdit(msg.id);
                                   }
                                 }}
-                                className="w-full resize-none rounded-2xl border border-border-ui bg-surface px-4 py-3 text-body text-text-primary shadow-sm outline-none focus:border-brand"
-                                style={{ minHeight: '48px', maxHeight: '200px', overflowY: 'hidden' }}
+                                className="ui-transition block w-full resize-none rounded-2xl border border-border bg-surface px-4 py-3 text-body text-text-primary shadow-card outline-none placeholder:text-text-secondary focus:border-brand disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-text-tertiary disabled:shadow-none"
+                                style={{
+                                  height: '48px',
+                                  minHeight: '48px',
+                                  maxHeight: '200px',
+                                  overflowY: 'hidden'
+                                }}
                                 autoFocus
                               />
                               <div className="flex items-center gap-2">
