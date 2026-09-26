@@ -12,10 +12,33 @@ import { getMatch, listReportMatches, runMatching } from '../features/matching/m
 import { getReport, listMyReports, listReportImages, reportImageUrl, searchReports } from '../features/reports/report-api'
 import { showAlert } from '../lib/alert'
 
+const CATEGORY_OPTIONS = [
+  'Electronics',
+  'Bags & Backpacks',
+  'Wallets & Purses',
+  'Keys & Access Cards',
+  'Books & Stationery',
+  'Clothing & Accessories',
+  'Documents & IDs',
+  'Sports & Fitness',
+  'Personal Items',
+  'Other',
+] as const
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const initialCategoryParam = searchParams.get('category') ?? ''
+  const isInitialKnownCategory = CATEGORY_OPTIONS.some((opt) => opt !== 'Other' && opt.toLowerCase() === initialCategoryParam.toLowerCase())
+  const isInitialOther = initialCategoryParam !== '' && !isInitialKnownCategory
+
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
-  const [category, setCategory] = useState(searchParams.get('category') ?? '')
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    if (!initialCategoryParam) return ''
+    if (isInitialOther) return 'Other'
+    const matched = CATEGORY_OPTIONS.find((opt) => opt.toLowerCase() === initialCategoryParam.toLowerCase())
+    return matched ?? 'Other'
+  })
+  const [otherCategory, setOtherCategory] = useState(() => (isInitialOther ? initialCategoryParam : ''))
   const [reportType, setReportType] = useState(searchParams.get('type') ?? 'all')
   const [searched, setSearched] = useState(searchParams.toString() !== '')
   const activeType = searchParams.get('type')
@@ -23,12 +46,22 @@ export function SearchPage() {
   const filters = { q: searchParams.get('q') ?? undefined, category: searchParams.get('category') ?? undefined, type: filteredType }
   const results = useQuery({ queryKey: ['reports', filters], queryFn: () => searchReports(filters), enabled: searched })
 
+  function handleCategoryChange(value: string) {
+    setSelectedCategory(value)
+    if (value !== 'Other') {
+      setOtherCategory('')
+    }
+  }
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSearched(true)
     const next: Record<string, string> = {}
     if (query.trim()) next.q = query.trim()
-    if (category.trim()) next.category = category.trim()
+
+    const effectiveCategory = selectedCategory === 'Other' ? otherCategory.trim() || 'Other' : selectedCategory.trim()
+    if (effectiveCategory) next.category = effectiveCategory
+
     if (reportType === 'lost' || reportType === 'found') next.type = reportType
     setSearchParams(next)
   }
@@ -44,8 +77,23 @@ export function SearchPage() {
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <Select label="Report type" value={reportType} onChange={(event) => setReportType(event.target.value)}><option value="all">Lost and found</option><option value="lost">Lost only</option><option value="found">Found only</option></Select>
-            <Input label="Category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Any category" />
+            <Select label="Category" value={selectedCategory} onChange={(event) => handleCategoryChange(event.target.value)}>
+              <option value="">Any category</option>
+              {CATEGORY_OPTIONS.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </Select>
           </div>
+          {selectedCategory === 'Other' && (
+            <div className="mt-4">
+              <Input
+                label="Item type"
+                value={otherCategory}
+                onChange={(event) => setOtherCategory(event.target.value)}
+                placeholder="Please specify the item"
+              />
+            </div>
+          )}
         </Card>
       </form>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
