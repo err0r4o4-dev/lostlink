@@ -16,6 +16,8 @@ export function AIChatPage() {
   const [input, setInput] = useState('')
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -105,9 +107,32 @@ export function AIChatPage() {
   const isWaiting = createMutation.isPending || sendMutation.isPending
   const hasMessagesOrPending = messages.length > 0 || pendingMessage !== null
 
-  const handleEdit = (msg: ChatMessage) => {
-    setInput(msg.content)
-    rewindMutation.mutate(msg.id)
+  const handleEditClick = (msg: ChatMessage) => {
+    setEditingMessageId(msg.id)
+    setEditContent(msg.content)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null)
+    setEditContent('')
+  }
+
+  const handleSaveEdit = async (msgId: string) => {
+    if (!editContent.trim()) return
+
+    const newText = editContent
+    setEditingMessageId(null)
+    setEditContent('')
+    setPendingMessage(newText)
+
+    // Fire rewind first, then send new message
+    try {
+      await rewindSession(request!, activeSessionId!, msgId)
+      sendMutation.mutate(newText)
+    } catch (e) {
+      // Revert if rewind fails
+      setPendingMessage(null)
+    }
   }
 
   return (
@@ -231,7 +256,31 @@ export function AIChatPage() {
                   {isLoadingMessages ? (
                      <div className="flex justify-center p-4"><Loader2 className="size-6 animate-spin text-brand" /></div>
                   ) : (
-                    messages.map((msg) => (
+                    messages.map((msg) => {
+                      if (editingMessageId === msg.id) {
+                        return (
+                          <div key={msg.id} className="ml-auto flex w-full max-w-[85%] flex-row-reverse items-start gap-3">
+                            <div className="flex flex-col w-full items-end gap-2">
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className="w-full min-h-[100px] resize-y rounded-2xl border border-border-ui bg-surface p-4 text-text-primary shadow-sm outline-none focus:border-brand"
+                                autoFocus
+                              />
+                              <div className="flex items-center gap-2">
+                                <Button variant="secondary" size="sm" onClick={handleCancelEdit}>
+                                  {translate('Cancel')}
+                                </Button>
+                                <Button size="sm" onClick={() => handleSaveEdit(msg.id)} disabled={!editContent.trim()}>
+                                  {translate('Save & Submit')}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      return (
                       <div
                         key={msg.id}
                         className={`flex w-full items-start gap-3 ${
@@ -283,7 +332,7 @@ export function AIChatPage() {
 
                             {msg.role === 'user' && (
                               <button
-                                onClick={() => handleEdit(msg)}
+                                onClick={() => handleEditClick(msg)}
                                 className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-tertiary transition-colors hover:bg-fill-hover hover:text-text-secondary"
                                 title={translate('Edit message')}
                               >
@@ -294,7 +343,7 @@ export function AIChatPage() {
                           </div>
                         </div>
                       </div>
-                    ))
+                    )})
                   )}
 
                   {pendingMessage && (

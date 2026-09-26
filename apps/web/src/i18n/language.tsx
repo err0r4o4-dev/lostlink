@@ -48,6 +48,8 @@ const thaiTranslations: Record<string, string> = {
   'Copy message': 'คัดลอกข้อความ',
   'Edit': 'แก้ไข',
   'Edit message': 'แก้ไขข้อความ',
+  'Cancel': 'ยกเลิก',
+  'Save & Submit': 'บันทึกและส่งใหม่',
   'Primary': 'เมนูหลัก',
   'Mobile primary': 'เมนูหลักบนมือถือ',
   'Frontend preview': 'ตัวอย่างส่วนหน้า',
