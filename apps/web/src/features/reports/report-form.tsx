@@ -1,26 +1,59 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { QueryClientContext } from '@tanstack/react-query'
 import { ArrowLeft, Eye, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
 import { FileUpload } from '../../components/file-upload'
-import { Button, Card, Checkbox, Input, Notice, Textarea } from '../../components/ui'
+import { Button, Card, Checkbox, Input, Notice, Select, Textarea } from '../../components/ui'
 import { Localize, useLanguage } from '../../i18n/language'
 import { ApiError } from '../../api/client'
+import { queryClient as defaultQueryClient } from '../../lib/query-client'
 import { useAuth } from '../auth/auth-state'
 import { createReport, uploadReportImage, type ReportRecord } from './report-api'
 import { showAlert } from '../../lib/alert'
 
+const REPORT_CATEGORIES = [
+  'Electronics',
+  'Bags & Backpacks',
+  'Wallets & Purses',
+  'Keys & Access Cards',
+  'Books & Stationery',
+  'Clothing & Accessories',
+  'Documents & IDs',
+  'Sports & Fitness',
+  'Personal Items',
+  'Other',
+] as const
+
 const reportSchema = z.object({
   itemName: z.string().trim().min(2, 'Enter a clear item name.').max(100, 'Keep the item name under 100 characters.'),
-  category: z.string().trim().min(2, 'Enter an item category.').max(80, 'Keep the category under 80 characters.'),
+  category: z.string().trim().min(1, 'Select a category.').max(80, 'Keep the category under 80 characters.'),
+  otherCategory: z.string().optional(),
   description: z.string().trim().min(10, 'Add enough public-safe detail to support discovery.').max(1000, 'Keep the description under 1,000 characters.'),
   eventDate: z.string().min(1, 'Choose a date.'),
   approximateTime: z.string(),
   location: z.string().trim().min(2, 'Enter a campus area or other approximate location.').max(120, 'Keep the location under 120 characters.'),
   identifyingDetails: z.string().trim().max(1000, 'Keep identifying details under 1,000 characters.'),
   privacyAcknowledged: z.literal(true, { error: 'Confirm that private ownership evidence is kept out of public details.' }),
+}).superRefine((data, ctx) => {
+  if (data.category === 'Other') {
+    if (!data.otherCategory || data.otherCategory.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['otherCategory'],
+        message: 'Please specify the item.',
+      })
+    } else if (data.otherCategory.trim().length > 80) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['otherCategory'],
+        message: 'Keep the category under 80 characters.',
+      })
+    }
+  }
 })
 
 type ReportValues = z.infer<typeof reportSchema>
@@ -30,6 +63,9 @@ interface ReportFormProps {
 }
 
 export function ReportForm({ reportType }: ReportFormProps) {
+  const navigate = useNavigate()
+  const contextClient = useContext(QueryClientContext)
+  const queryClient = contextClient ?? defaultQueryClient
   const [reviewValues, setReviewValues] = useState<ReportValues>()
   const [created, setCreated] = useState<ReportRecord>()
   const [image, setImage] = useState<File | null>(null)
@@ -39,21 +75,29 @@ export function ReportForm({ reportType }: ReportFormProps) {
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const { request } = useAuth()
   const { translate } = useLanguage()
-  const { formState: { errors }, handleSubmit, register } = useForm<ReportValues>({
+  const { formState: { errors }, handleSubmit, register, setValue, watch } = useForm<ReportValues>({
     resolver: zodResolver(reportSchema),
-    defaultValues: { approximateTime: '', identifyingDetails: '' },
+    defaultValues: { category: '', otherCategory: '', approximateTime: '', identifyingDetails: '' },
   })
   const eventVerb = reportType === 'lost' ? 'lost' : 'found'
+  const watchedCategory = watch('category')
+
+  useEffect(() => {
+    if (watchedCategory !== 'Other') {
+      setValue('otherCategory', '')
+    }
+  }, [watchedCategory, setValue])
 
   async function submitReport() {
     if (!reviewValues) return
     setIsSubmitting(true)
     setSubmitError(undefined)
+    const effectiveCategory = reviewValues.category === 'Other' ? (reviewValues.otherCategory?.trim() || 'Other') : reviewValues.category
     try {
       const response = await createReport(request, {
         report_type: reportType,
         item_name: reviewValues.itemName,
-        category: reviewValues.category,
+        category: effectiveCategory,
         public_description: reviewValues.description,
         event_date: reviewValues.eventDate,
         approximate_time: reviewValues.approximateTime,
@@ -67,7 +111,9 @@ export function ReportForm({ reportType }: ReportFormProps) {
           setImageUploadError(error instanceof ApiError ? error.message : 'The report was saved, but the image could not be uploaded.')
         }
       }
+      await queryClient.invalidateQueries({ queryKey: ['reports'] })
       await showAlert.success(translate('Report submitted'), translate('Your report has been saved.'))
+      void navigate('/report')
     } catch (error) {
       const errorMessage = error instanceof ApiError ? error.message : 'Report submission is temporarily unavailable.'
       setSubmitError(errorMessage)
@@ -82,9 +128,12 @@ export function ReportForm({ reportType }: ReportFormProps) {
   }
 
   if (reviewValues) {
+    const displayedCategory = reviewValues.category === 'Other' && reviewValues.otherCategory?.trim()
+      ? `Other (${reviewValues.otherCategory.trim()})`
+      : reviewValues.category
     const rows = [
       ['Item', reviewValues.itemName],
-      ['Category', reviewValues.category],
+      ['Category', displayedCategory],
       [`Date ${eventVerb}`, reviewValues.eventDate],
       ['Approximate time', reviewValues.approximateTime || 'Not provided'],
       ['Approximate location', reviewValues.location],
@@ -126,8 +175,22 @@ export function ReportForm({ reportType }: ReportFormProps) {
         </div>
         <div className="grid gap-5 md:grid-cols-2">
           <Input label="Item name" required placeholder="e.g. black water bottle" error={errors.itemName?.message} {...register('itemName')} />
-          <Input label="Category" required placeholder="e.g. electronics, keys, clothing" error={errors.category?.message} {...register('category')} />
+          <Select label="Category" required error={errors.category?.message} {...register('category')}>
+            <option value="">Select a category</option>
+            {REPORT_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </Select>
         </div>
+        {watchedCategory === 'Other' && (
+          <Input
+            label="Please specify"
+            required
+            placeholder="e.g. umbrella, calculator, water bottle"
+            error={errors.otherCategory?.message}
+            {...register('otherCategory')}
+          />
+        )}
         <Textarea label="Public description" required placeholder="Describe appearance, color, material, or visible condition." error={errors.description?.message} {...register('description')} />
         <div className="grid gap-5 md:grid-cols-3">
           <Input label={`Date ${eventVerb}`} type="date" required error={errors.eventDate?.message} {...register('eventDate')} />

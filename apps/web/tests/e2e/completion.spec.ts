@@ -52,8 +52,8 @@ const routeCases = [
   ['/register', /Create your account/],
   ['/forgot-password', /Recover account access/],
   ['/reset-password', /Set a new password/],
-  ['/privacy', /ข้อมูลความเป็นส่วนตัว/],
-  ['/terms', /ข้อกำหนดการใช้งาน/],
+  ['/privacy', /Privacy information|ข้อมูลความเป็นส่วนตัว/],
+  ['/terms', /Terms of use|ข้อกำหนดการใช้งาน/],
 ] as const
 
 const viewports = [375, 390, 430, 768, 1024, 1280, 1440, 1920]
@@ -87,7 +87,7 @@ test('validates and reviews a report before submission', async ({ page }) => {
   await page.getByRole('button', { name: 'Review report' }).click()
   await expect(page.getByText('Enter a clear item name.')).toBeVisible()
   await page.getByLabel('Item name').fill('Black water bottle')
-  await page.getByLabel('Category').fill('Drinkware')
+  await page.getByLabel('Category').selectOption('Personal Items')
   await page.getByRole('textbox', { name: /^Public description/ }).fill('Matte black bottle with a silver lid.')
   await page.getByLabel('Date lost').fill('2026-09-09')
   await page.getByLabel('Approximate location').fill('Campus library')

@@ -17,6 +17,7 @@
   * {
     box-sizing: border-box;
     border-color: var(--color-border);
+    caret-color: transparent;
   }
 
   html {
@@ -32,6 +33,13 @@
     margin: 0;
     background: var(--color-canvas);
     color: var(--color-text-primary);
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    caret-color: auto;
   }
 
   button,

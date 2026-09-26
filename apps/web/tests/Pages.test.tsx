@@ -17,8 +17,9 @@ vi.mock('../src/lib/alert', () => ({ showAlert: alertMocks }))
 import { ApiError, apiBlobRequest, apiRequest } from '../src/api/client'
 import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/AuthPages'
 import { HomePage } from '../src/pages/HomePage'
+import { SearchPage } from '../src/pages/DiscoveryPages'
 import { NewClaimPage } from '../src/pages/ClaimPages'
-import { ReportLostPage } from '../src/pages/ReportPages'
+import { ReportHubPage, ReportLostPage } from '../src/pages/ReportPages'
 import { StaffClaimDetailPage } from '../src/pages/StaffPages'
 import { ProfilePage } from '../src/pages/SupportPages'
 import { router } from '../src/routes/router'
@@ -37,6 +38,7 @@ const approvedRoutes = [
 ]
 
 afterEach(() => {
+  window.localStorage.clear()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
 })
@@ -58,7 +60,7 @@ function renderWithQuery(children: React.ReactNode) {
 
 async function reviewValidLostReport(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
-  await user.type(screen.getByLabelText(/^category/i), 'Drinkware')
+  await user.selectOptions(screen.getByLabelText(/^category/i), 'Personal Items')
   await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
   fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
   await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
@@ -144,6 +146,55 @@ describe('frontend completion routes', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Report could not be saved')
     expect(alertMocks.error).toHaveBeenCalledWith('Submission failed', 'Report could not be saved')
+  })
+
+  it('validates required category selection and dynamic other category specification in report form', async () => {
+    const user = userEvent.setup()
+    render(
+      <LanguageProvider>
+        <AuthContext.Provider value={authenticatedContext}>
+          <MemoryRouter>
+            <ReportLostPage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </LanguageProvider>,
+    )
+
+    const categorySelect = screen.getByLabelText(/^category/i)
+    expect(categorySelect).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Select a category' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Electronics' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Other' })).toBeInTheDocument()
+
+    // Initially "Please specify" is not rendered
+    expect(screen.queryByLabelText(/please specify/i)).not.toBeInTheDocument()
+
+    // Select "Other" -> "Please specify" appears
+    await user.selectOptions(categorySelect, 'Other')
+    const pleaseSpecifyInput = screen.getByLabelText(/please specify/i)
+    expect(pleaseSpecifyInput).toBeInTheDocument()
+    expect(pleaseSpecifyInput).toHaveAttribute('placeholder', 'e.g. umbrella, calculator, water bottle')
+
+    // Form submission without filling Other triggers validation
+    await user.type(screen.getByLabelText(/item name/i), 'Black water bottle')
+    await user.type(screen.getByRole('textbox', { name: /^public description/i }), 'Matte black bottle with a silver lid.')
+    fireEvent.change(screen.getByLabelText(/date lost/i), { target: { value: '2026-09-09' } })
+    await user.type(screen.getByLabelText(/approximate location/i), 'Campus library')
+    await user.click(screen.getByRole('checkbox', { name: /kept contact information/i }))
+    await user.click(screen.getByRole('button', { name: 'Review report' }))
+    expect(await screen.findByText('Please specify the item.')).toBeInTheDocument()
+
+    // Type in custom other category
+    await user.type(pleaseSpecifyInput, 'Calculator')
+    expect(pleaseSpecifyInput).toHaveValue('Calculator')
+
+    // Switching category hides and clears "Please specify"
+    await user.selectOptions(categorySelect, 'Electronics')
+    expect(screen.queryByLabelText(/please specify/i)).not.toBeInTheDocument()
+
+    // Switch back to "Other" -> field is cleared
+    await user.selectOptions(categorySelect, 'Other')
+    expect(screen.getByLabelText(/please specify/i)).toHaveValue('')
   })
 
   it('keeps a created claim draft reachable when saving initial evidence fails', async () => {
@@ -341,5 +392,224 @@ describe('frontend completion routes', () => {
     fireEvent.change(input, { target: { files: [new File(['not-an-image'], 'evidence.txt', { type: 'text/plain' })] } })
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose a JPG or PNG image.')
+  })
+
+  it('renders search placeholder initially and hides it when results exist in cache', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    // 1. Initial state (no search done, empty cache) -> shows placeholder
+    const { unmount } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText('Start with an item description')).toBeInTheDocument()
+    expect(screen.getByText('Search not started')).toBeInTheDocument()
+    unmount()
+
+    // 2. Returning to /search with cached results -> does not show placeholder banner, shows result cards
+    client.setQueryData(['reports', { q: undefined, category: undefined, type: undefined }], {
+      reports: [
+        {
+          id: 'report-1',
+          report_type: 'lost',
+          item_name: 'Blue Backpack',
+          category: 'Bags',
+          approximate_location: 'Central Library',
+          event_date: '2026-09-20',
+        },
+      ],
+    })
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByText('Start with an item description')).not.toBeInTheDocument()
+    expect(screen.getByText('Blue Backpack')).toBeInTheDocument()
+    expect(screen.getByText('1 results')).toBeInTheDocument()
+  })
+
+  it('supports category dropdown selection and dynamic other input specification', async () => {
+    const user = userEvent.setup()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    // Category select should have all options
+    const categorySelect = screen.getByLabelText(/^category/i)
+    expect(categorySelect).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Any category' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Electronics' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Bags & Backpacks' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Other' })).toBeInTheDocument()
+
+    // Initially "Item type" input should not be visible
+    expect(screen.queryByPlaceholderText('Please specify the item')).not.toBeInTheDocument()
+
+    // Select "Other" -> dynamic input should appear
+    await user.selectOptions(categorySelect, 'Other')
+    const otherInput = screen.getByPlaceholderText('Please specify the item')
+    expect(otherInput).toBeInTheDocument()
+
+    // Type in custom item specification
+    await user.type(otherInput, 'Scientific Calculator')
+    expect(otherInput).toHaveValue('Scientific Calculator')
+
+    // Switch to another category -> other input should disappear
+    await user.selectOptions(categorySelect, 'Electronics')
+    expect(screen.queryByPlaceholderText('Please specify the item')).not.toBeInTheDocument()
+
+    // Switch back to "Other" -> custom text should have been cleared
+    await user.selectOptions(categorySelect, 'Other')
+    const newOtherInput = screen.getByPlaceholderText('Please specify the item')
+    expect(newOtherInput).toHaveValue('')
+  })
+
+  it('prompts confirmation and deletes a report from My reports list', async () => {
+    const user = userEvent.setup()
+    const reportItem = {
+      id: 'report-123',
+      report_type: 'lost' as const,
+      item_name: 'Silver Watch',
+      category: 'Jewelry',
+      approximate_location: 'Science Building',
+      status: 'active' as const,
+      created_at: '2026-09-20T00:00:00Z',
+    }
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/reports/mine')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              reports: [reportItem],
+              pagination: { limit: 20, offset: 0 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      if (url.includes('/api/v1/reports/report-123/withdraw') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              report: { ...reportItem, status: 'withdrawn' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.reject(new Error(`Unhandled request: ${url}`))
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+    alertMocks.confirmDestructive.mockResolvedValueOnce(true)
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter>
+          <ReportHubPage />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(await screen.findByText('Silver Watch')).toBeInTheDocument()
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Silver Watch' })
+    expect(deleteBtn).toBeInTheDocument()
+
+    await user.click(deleteBtn)
+
+    expect(alertMocks.confirmDestructive).toHaveBeenCalledWith(
+      'Are you sure you want to delete this report?',
+      'This will withdraw and remove "Silver Watch" from active public discovery.',
+      'Delete report',
+      'Cancel',
+    )
+
+    await waitFor(() => {
+      expect(alertMocks.success).toHaveBeenCalledWith(
+        'Report deleted',
+        'The report has been removed from your active list.',
+      )
+    })
+  })
+
+  it('revalidates query cache, navigates to report hub, and displays the new report in My reports', async () => {
+    const user = userEvent.setup()
+    const newReport = {
+      id: 'report-new-1',
+      report_type: 'lost' as const,
+      item_name: 'Black water bottle',
+      category: 'Drinkware',
+      public_description: 'Matte black bottle with a silver lid.',
+      approximate_location: 'Campus library',
+      event_date: '2026-09-09',
+      status: 'active' as const,
+      created_at: '2026-09-09T00:00:00Z',
+    }
+
+    let reportCreated = false
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/reports/mine')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              reports: reportCreated ? [newReport] : [],
+              pagination: { limit: 20, offset: 0 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      if (url.includes('/api/v1/reports') && init?.method === 'POST') {
+        reportCreated = true
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ report: newReport }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.reject(new Error(`Unhandled request: ${url}`))
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/report/lost']}>
+          <Routes>
+            <Route path="/report" element={<ReportHubPage />} />
+            <Route path="/report/lost" element={<ReportLostPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    await reviewValidLostReport(user)
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    await waitFor(() => {
+      expect(alertMocks.success).toHaveBeenCalledWith('Report submitted', 'Your report has been saved.')
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'What happened?' })).toBeInTheDocument()
+    expect(await screen.findByText('Black water bottle')).toBeInTheDocument()
+    expect(screen.queryByText('No reports yet')).not.toBeInTheDocument()
   })
 })
