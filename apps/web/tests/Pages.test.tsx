@@ -19,7 +19,7 @@ import { GoogleAuthCallbackPage, LoginPage, RegisterPage } from '../src/pages/Au
 import { HomePage } from '../src/pages/HomePage'
 import { SearchPage } from '../src/pages/DiscoveryPages'
 import { NewClaimPage } from '../src/pages/ClaimPages'
-import { ReportLostPage } from '../src/pages/ReportPages'
+import { ReportHubPage, ReportLostPage } from '../src/pages/ReportPages'
 import { StaffClaimDetailPage } from '../src/pages/StaffPages'
 import { ProfilePage } from '../src/pages/SupportPages'
 import { router } from '../src/routes/router'
@@ -385,5 +385,139 @@ describe('frontend completion routes', () => {
     expect(screen.queryByText('Start with an item description')).not.toBeInTheDocument()
     expect(screen.getByText('Blue Backpack')).toBeInTheDocument()
     expect(screen.getByText('1 results')).toBeInTheDocument()
+  })
+
+  it('prompts confirmation and deletes a report from My reports list', async () => {
+    const user = userEvent.setup()
+    const reportItem = {
+      id: 'report-123',
+      report_type: 'lost' as const,
+      item_name: 'Silver Watch',
+      category: 'Jewelry',
+      approximate_location: 'Science Building',
+      status: 'active' as const,
+      created_at: '2026-09-20T00:00:00Z',
+    }
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/reports/mine')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              reports: [reportItem],
+              pagination: { limit: 20, offset: 0 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      if (url.includes('/api/v1/reports/report-123/withdraw') && init?.method === 'POST') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              report: { ...reportItem, status: 'withdrawn' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.reject(new Error(`Unhandled request: ${url}`))
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+    alertMocks.confirmDestructive.mockResolvedValueOnce(true)
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter>
+          <ReportHubPage />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(await screen.findByText('Silver Watch')).toBeInTheDocument()
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Silver Watch' })
+    expect(deleteBtn).toBeInTheDocument()
+
+    await user.click(deleteBtn)
+
+    expect(alertMocks.confirmDestructive).toHaveBeenCalledWith(
+      'Are you sure you want to delete this report?',
+      'This will withdraw and remove "Silver Watch" from active public discovery.',
+      'Delete report',
+      'Cancel',
+    )
+
+    await waitFor(() => {
+      expect(alertMocks.success).toHaveBeenCalledWith(
+        'Report deleted',
+        'The report has been removed from your active list.',
+      )
+    })
+  })
+
+  it('revalidates query cache, navigates to report hub, and displays the new report in My reports', async () => {
+    const user = userEvent.setup()
+    const newReport = {
+      id: 'report-new-1',
+      report_type: 'lost' as const,
+      item_name: 'Black water bottle',
+      category: 'Drinkware',
+      public_description: 'Matte black bottle with a silver lid.',
+      approximate_location: 'Campus library',
+      event_date: '2026-09-09',
+      status: 'active' as const,
+      created_at: '2026-09-09T00:00:00Z',
+    }
+
+    let reportCreated = false
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/reports/mine')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              reports: reportCreated ? [newReport] : [],
+              pagination: { limit: 20, offset: 0 },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      if (url.includes('/api/v1/reports') && init?.method === 'POST') {
+        reportCreated = true
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ report: newReport }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }
+      return Promise.reject(new Error(`Unhandled request: ${url}`))
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderWithQuery(
+      <AuthContext.Provider value={authenticatedContext}>
+        <MemoryRouter initialEntries={['/report/lost']}>
+          <Routes>
+            <Route path="/report" element={<ReportHubPage />} />
+            <Route path="/report/lost" element={<ReportLostPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    await reviewValidLostReport(user)
+    await user.click(screen.getByRole('button', { name: 'Submit report' }))
+
+    await waitFor(() => {
+      expect(alertMocks.success).toHaveBeenCalledWith('Report submitted', 'Your report has been saved.')
+    })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'What happened?' })).toBeInTheDocument()
+    expect(await screen.findByText('Black water bottle')).toBeInTheDocument()
+    expect(screen.queryByText('No reports yet')).not.toBeInTheDocument()
   })
 })

@@ -25,15 +25,45 @@ function stringValue(values: FormData, key: string) {
 
 export function OwnedReportsPanel() {
   const { request } = useAuth()
-  const reports = useQuery({ queryKey: ['reports', 'mine'], queryFn: () => listMyReports(request) })
+  const queryClient = useQueryClient()
+  const reports = useQuery({
+    queryKey: ['reports', 'mine'],
+    queryFn: () => listMyReports(request),
+    refetchOnMount: 'always',
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (reportId: string) => withdrawReport(request, reportId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['reports', 'mine'] })
+      await showAlert.success('Report deleted', 'The report has been removed from your active list.')
+    },
+    onError: (error) => {
+      void showAlert.error('Failed to delete report', apiErrorMessage(error, 'Could not delete the report.'))
+    },
+  })
+
+  async function handleDelete(reportId: string, itemName: string) {
+    const confirmed = await showAlert.confirmDestructive(
+      'Are you sure you want to delete this report?',
+      `This will withdraw and remove "${itemName}" from active public discovery.`,
+      'Delete report',
+      'Cancel',
+    )
+    if (confirmed) {
+      deleteMutation.mutate(reportId)
+    }
+  }
+
+  const activeReports = reports.data?.reports.filter((entry) => entry.status === 'active') ?? []
 
   if (reports.isPending) return <LoadingState label="Loading your reports" />
   if (reports.isError) return <ErrorState title="Reports unavailable" description="Your reports could not be loaded." onRetry={() => void reports.refetch()} />
-  if (!reports.data.reports.length) return <EmptyState icon={PackageSearch} title="No reports yet" description="Create a lost or found report to begin the discovery workflow." />
+  if (!activeReports.length) return <EmptyState icon={PackageSearch} title="No reports yet" description="Create a lost or found report to begin the discovery workflow." />
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {reports.data.reports.map((report) => (
+      {activeReports.map((report) => (
         <Card key={report.id} className="p-5">
           <div className="flex flex-wrap items-center gap-2"><StatusBadge tone={report.report_type === 'lost' ? 'brand' : 'info'}>{report.report_type}</StatusBadge><StatusBadge>{report.status}</StatusBadge></div>
           <h3 className="mt-4 text-card font-semibold">{report.item_name}</h3>
@@ -41,6 +71,17 @@ export function OwnedReportsPanel() {
           <div className="mt-5 flex flex-wrap gap-3">
             <Link to={`/reports/${encodeURIComponent(report.id)}/manage`} className={buttonVariants({ variant: 'secondary', size: 'compact' })}><Pencil aria-hidden="true" className="size-4" />Manage</Link>
             {report.report_type === 'lost' && report.status === 'active' && <Link to={`/matches?report=${encodeURIComponent(report.id)}`} className={buttonVariants({ variant: 'ghost', size: 'compact' })}><SearchCheck aria-hidden="true" className="size-4" />Find matches</Link>}
+            {report.status === 'active' && (
+              <Button
+                variant="danger"
+                size="compact"
+                disabled={deleteMutation.isPending}
+                onClick={() => void handleDelete(report.id, report.item_name)}
+                aria-label={`Delete ${report.item_name}`}
+              >
+                <Trash2 aria-hidden="true" className="size-4" />Delete
+              </Button>
+            )}
           </div>
         </Card>
       ))}
