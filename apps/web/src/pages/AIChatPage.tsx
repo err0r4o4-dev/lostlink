@@ -272,7 +272,7 @@ export function AIChatPage() {
                                   {translate('Cancel')}
                                 </Button>
                                 <Button size="sm" onClick={() => handleSaveEdit(msg.id)} disabled={!editContent.trim()}>
-                                  {translate('Save & Submit')}
+                                  {translate('Send')}
                                 </Button>
                               </div>
                             </div>
