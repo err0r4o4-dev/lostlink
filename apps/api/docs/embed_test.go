@@ -26,6 +26,9 @@ func TestOpenAPIYAML(t *testing.T) {
 	}
 	for _, path := range []string{
 		"/health",
+		"/v1/chats",
+		"/v1/chats/{sessionId}/messages",
+		"/v1/chats/{sessionId}/messages/{messageId}",
 		"/v1/reports/{reportId}/matching-runs",
 		"/v1/claims",
 		"/v1/tracking/{reference}",

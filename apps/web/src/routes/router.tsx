@@ -23,6 +23,7 @@ const routes = [
     element: <AppShell />,
     children: [
       { path: 'discover', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).DiscoveryHubPage }) },
+      { path: 'chat', lazy: async () => ({ Component: (await import('../pages/AIChatPage')).AIChatPage }) },
       { path: 'search', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).SearchPage }) },
       { path: 'items/:itemId', lazy: async () => ({ Component: (await import('../pages/DiscoveryPages')).ItemDetailPage }) },
       { path: 'help', lazy: async () => ({ Component: (await import('../pages/SupportPages')).HelpPage }) },

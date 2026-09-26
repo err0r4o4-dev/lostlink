@@ -89,9 +89,15 @@ services:
       dockerfile: deployments/docker/ai.Dockerfile
       target: development
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       WATCHFILES_FORCE_POLLING: "true"
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-replace-me-internal-service-token}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-anthropic/claude-3.5-haiku}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
     volumes:
       - ./apps/ai:/app
     healthcheck:
@@ -106,6 +112,7 @@ services:
       start_period: 10s
     networks:
       - backend
+      - edge
 
   postgres:
     image: pgvector/pgvector:0.8.1-pg17

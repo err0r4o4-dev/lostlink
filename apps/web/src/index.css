@@ -58,6 +58,37 @@
     background: var(--color-brand-soft);
     color: var(--color-brand-active);
   }
+
+  /* Chat Textarea Scrollbar Styles */
+  textarea {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-ui) transparent;
+  }
+  textarea::-webkit-scrollbar {
+    width: 6px;
+  }
+  textarea::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  textarea::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-ui);
+    border-radius: 10px;
+  }
+
+  /* Chat Thinking Animation */
+  @keyframes typing-dot {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+  .animate-typing-dot::after {
+    content: '';
+    animation: typing-dot 1.5s infinite linear;
+    display: inline-block;
+    width: 1em;
+    text-align: left;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -8,6 +8,7 @@ import (
 
 	apiDocs "github.com/err0r4o4-dev/lostlink/apps/api/docs"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
@@ -34,6 +35,7 @@ type Options struct {
 	Tracking      *tracking.Service
 	Notifications *notification.Service
 	Admin         *admin.Repository
+	AIChat        *aichat.Service
 }
 
 func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
@@ -65,6 +67,9 @@ func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
 		}
 		if options.Notifications != nil {
 			notification.RegisterRoutes(v1, options.Notifications, options.Auth)
+		}
+		if options.AIChat != nil {
+			aichat.RegisterRoutes(v1, options.AIChat, options.Auth)
 		}
 		staff := v1.Group("/staff")
 		if options.Reports != nil {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/admin"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/aichat"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/config"
@@ -51,6 +52,7 @@ func main() {
 	var trackingService *tracking.Service
 	var notificationService *notification.Service
 	var adminRepository *admin.Repository
+	var aichatService *aichat.Service
 	var googleOAuth *auth.GoogleOAuth
 	if pool != nil {
 		var objects objectstorage.Store
@@ -86,6 +88,7 @@ func main() {
 		trackingService = tracking.NewService(tracking.NewRepository(pool))
 		notificationService = notification.NewService(notification.NewRepository(pool))
 		adminRepository = admin.NewRepository(pool)
+		aichatService = aichat.NewService(aichat.NewRepository(pool), aichat.NewAIClient(cfg.AIServiceURL, cfg.AIServiceToken))
 		googleOAuth = auth.NewGoogleOAuth(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)
 	}
 
@@ -94,6 +97,7 @@ func main() {
 		Handler: server.New(os.Stdout, server.Options{
 			Auth: authService, Reports: reportService, Matching: matchingService, Claims: claimService,
 			Tracking: trackingService, Notifications: notificationService, Admin: adminRepository,
+			AIChat:    aichatService,
 			WebOrigin: cfg.WebOrigin, SecureCookies: cfg.Environment == "production", GoogleOAuth: googleOAuth,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,

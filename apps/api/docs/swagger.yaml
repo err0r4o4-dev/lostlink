@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LostLink API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     # Introduction
     Public REST API for the LostLink university Lost & Found platform. The Go
@@ -10,9 +10,9 @@ info:
 
     # Current scope
     Health, authentication, report lifecycle and images, matching, claims,
-    verification decisions, return tracking, notifications, and staff review
-    are implemented. Matching is an uncertain discovery aid and cannot approve
-    a claim.
+    verification decisions, return tracking, notifications, AI chat, and staff
+    review are implemented. Matching is an uncertain discovery aid and cannot
+    approve a claim.
 
     # Authentication
     Access tokens are short-lived JWT bearer tokens. Refresh tokens are opaque,
@@ -29,6 +29,8 @@ tags:
     description: Process health
   - name: Authentication
     description: Account and session lifecycle
+  - name: Chat
+    description: Authenticated AI-assisted conversations with atomic turn persistence
   - name: Reports
     description: Public-safe lost and found reporting and discovery
   - name: Matching
@@ -209,6 +211,148 @@ paths:
             Set-Cookie:
               schema: { type: string }
               description: Clears transient cookies and, on success, sets the HttpOnly refresh cookie
+  /v1/chats:
+    get:
+      tags: [Chat]
+      operationId: listChatSessions
+      summary: List the authenticated account's chat sessions
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Chat sessions ordered by most recently updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatSessionList" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Chat]
+      operationId: createChatSession
+      summary: Create a chat session with its first completed turn
+      description: |
+        The API generates the AI reply before persistence, then commits the
+        session, user message, and AI message atomically. If AI generation
+        fails, no session or message is stored. Reuse the same `client_turn_id`
+        only when retrying the identical logical submission.
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatTurnRequest" }
+      responses:
+        "201":
+          description: Session and first user/AI turn created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatTurnResponse" }
+        "400": { $ref: "#/components/responses/ChatBadRequest" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/ChatAIUnavailable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/chats/{sessionId}:
+    delete:
+      tags: [Chat]
+      operationId: deleteChatSession
+      summary: Delete an owned chat session and its messages
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Chat session deleted }
+        "400": { $ref: "#/components/responses/ChatBadRequest" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/chats/{sessionId}/messages:
+    get:
+      tags: [Chat]
+      operationId: listChatMessages
+      summary: List messages in an owned chat session
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Messages ordered from oldest to newest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessageList" }
+        "400": { $ref: "#/components/responses/ChatBadRequest" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    post:
+      tags: [Chat]
+      operationId: appendChatTurn
+      summary: Append one completed user/AI turn
+      description: |
+        The user and AI messages are committed in one transaction only after a
+        valid AI reply is available. AI failure leaves the stored conversation
+        unchanged. Reusing the same `client_turn_id` for the identical retry
+        returns the already committed turn instead of creating a duplicate.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatTurnRequest" }
+      responses:
+        "200":
+          description: User and AI messages committed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatTurnResponse" }
+        "400": { $ref: "#/components/responses/ChatBadRequest" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/ChatAIUnavailable" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /v1/chats/{sessionId}/messages/{messageId}:
+    put:
+      tags: [Chat]
+      operationId: replaceChatTurn
+      summary: Replace a past user message and its future branch atomically
+      description: |
+        The original message and all later messages remain stored while the AI
+        reply is generated. After generation succeeds, one transaction deletes
+        that branch and inserts the edited user/AI pair. AI failure preserves
+        the original conversation unchanged. Reuse `client_turn_id` only for an
+        identical retry of this edit.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: messageId, in: path, required: true, description: User message where the new branch starts, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatTurnRequest" }
+      responses:
+        "200":
+          description: Original branch replaced with the edited user/AI turn
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatTurnResponse" }
+        "400": { $ref: "#/components/responses/ChatBadRequest" }
+        "401": { $ref: "#/components/responses/AuthenticationRequired" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/StateConflict" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503": { $ref: "#/components/responses/ChatAIUnavailable" }
+        "500": { $ref: "#/components/responses/InternalError" }
   /v1/reports:
     get:
       tags: [Reports]
@@ -927,6 +1071,16 @@ components:
       description: UUID generated once per logical submission and reused only for an identical retry.
       schema: { type: string, format: uuid }
   responses:
+    ChatBadRequest:
+      description: Malformed JSON, an invalid UUID, a missing client turn id, or a request body larger than 20 KiB
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    ChatAIUnavailable:
+      description: AI generation failed; the submitted turn and any edit cutoff were not persisted
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
     SessionCreated:
       description: Account created; rotated refresh credential is set as an HttpOnly cookie
       headers:
@@ -1004,6 +1158,66 @@ components:
               pagination: { $ref: "#/components/schemas/Pagination" }
             additionalProperties: false
   schemas:
+    ChatTurnRequest:
+      type: object
+      required: [message, client_turn_id]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Must contain at least one non-whitespace character.
+        client_turn_id:
+          type: string
+          format: uuid
+          description: Stable UUID generated once by the client and reused for an identical retry.
+      additionalProperties: false
+    ChatSession:
+      type: object
+      required: [id, user_id, title, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        title: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      additionalProperties: false
+    ChatMessage:
+      type: object
+      required: [id, session_id, role, content, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        role: { type: string, enum: [user, ai, system] }
+        content: { type: string }
+        analysis_data:
+          description: Optional structured AI analysis retained with an AI message.
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
+    ChatSessionList:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items: { $ref: "#/components/schemas/ChatSession" }
+      additionalProperties: false
+    ChatMessageList:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/ChatMessage" }
+      additionalProperties: false
+    ChatTurnResponse:
+      type: object
+      required: [session, user_message, ai_message]
+      properties:
+        session: { $ref: "#/components/schemas/ChatSession" }
+        user_message: { $ref: "#/components/schemas/ChatMessage" }
+        ai_message: { $ref: "#/components/schemas/ChatMessage" }
+      additionalProperties: false
     HealthResponse:
       type: object
       required: [status, service]
