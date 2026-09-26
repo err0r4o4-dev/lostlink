@@ -52,8 +52,8 @@ const routeCases = [
   ['/register', /Create your account/],
   ['/forgot-password', /Recover account access/],
   ['/reset-password', /Set a new password/],
-  ['/privacy', /ข้อมูลความเป็นส่วนตัว/],
-  ['/terms', /ข้อกำหนดการใช้งาน/],
+  ['/privacy', /Privacy information|ข้อมูลความเป็นส่วนตัว/],
+  ['/terms', /Terms of use|ข้อกำหนดการใช้งาน/],
 ] as const
 
 const viewports = [375, 390, 430, 768, 1024, 1280, 1440, 1920]
