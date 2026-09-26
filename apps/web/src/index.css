@@ -50,6 +50,21 @@
     background: var(--color-brand-soft);
     color: var(--color-brand-active);
   }
+
+  /* Chat Thinking Animation */
+  @keyframes typing-dot {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+  .animate-typing-dot::after {
+    content: '';
+    animation: typing-dot 1.5s infinite linear;
+    display: inline-block;
+    width: 1em;
+    text-align: left;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

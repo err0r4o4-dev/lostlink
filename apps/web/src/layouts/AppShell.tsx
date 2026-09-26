@@ -5,6 +5,7 @@ import {
   Compass,
   FileCheck2,
   MapPin,
+  MessageSquare,
   PackagePlus,
   Search,
   Sparkles,
@@ -27,6 +28,7 @@ interface NavigationItem {
 const desktopNavigation: NavigationItem[] = [
   { to: '/discover', icon: Compass, label: 'Explore items' },
   { to: '/search', icon: Search, label: 'Search' },
+  { to: '/chat', icon: MessageSquare, label: 'AI Chat' },
   { to: '/report', icon: PackagePlus, label: 'Report' },
   { to: '/matches', icon: Sparkles, label: 'Matches' },
   { to: '/claims', icon: FileCheck2, label: 'Claims' },
@@ -36,12 +38,17 @@ const desktopNavigation: NavigationItem[] = [
   { to: '/staff', icon: UsersRound, label: 'Staff preview' },
 ]
 
-const tabletNavigation = desktopNavigation.slice(0, 4)
+const tabletNavigation = [
+  desktopNavigation[0],
+  desktopNavigation[1],
+  desktopNavigation[2], // AI Chat
+  desktopNavigation[3],
+]
 const mobileNavigation: NavigationItem[] = [
   desktopNavigation[0],
   desktopNavigation[1],
-  desktopNavigation[2],
-  desktopNavigation[5],
+  desktopNavigation[2], // AI Chat
+  desktopNavigation[6], // Tracking (was index 5 before AI Chat, now index 6)
   { to: '/profile', icon: UserRound, label: 'Profile' },
 ]
 
