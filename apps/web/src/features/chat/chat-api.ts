@@ -13,22 +13,29 @@ export interface ChatMessage {
   session_id: string
   role: 'user' | 'ai' | 'system'
   content: string
-  analysis_data?: any
+  analysis_data?: unknown
   created_at: string
+}
+
+interface ChatTurnResponse {
+  session: ChatSession
+  user_message: ChatMessage
+  ai_message: ChatMessage
+}
+
+function turnBody(message: string, clientTurnId: string) {
+  return JSON.stringify({ message, client_turn_id: clientTurnId })
 }
 
 export function listSessions(request: AuthorizedRequest) {
   return request<{ sessions: ChatSession[] }>('/v1/chats')
 }
 
-export function createSession(request: AuthorizedRequest, message: string) {
-  return request<{
-    session: ChatSession
-    user_message: ChatMessage
-    ai_message: ChatMessage
-  }>('/v1/chats', {
+export function createSession(request: AuthorizedRequest, message: string, clientTurnId: string, signal?: AbortSignal) {
+  return request<ChatTurnResponse>('/v1/chats', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: turnBody(message, clientTurnId),
+    signal,
   })
 }
 
@@ -38,23 +45,38 @@ export function deleteSession(request: AuthorizedRequest, sessionId: string) {
   })
 }
 
-export function rewindSession(request: AuthorizedRequest, sessionId: string, messageId: string) {
-  return request(`/v1/chats/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}/rewind`, {
-    method: 'DELETE',
-  })
-}
-
 export function listMessages(request: AuthorizedRequest, sessionId: string) {
   return request<{ messages: ChatMessage[] }>(`/v1/chats/${encodeURIComponent(sessionId)}/messages`)
 }
 
-export function sendMessage(request: AuthorizedRequest, sessionId: string, message: string) {
-  return request<{
-    session: ChatSession
-    user_message: ChatMessage
-    ai_message: ChatMessage
-  }>(`/v1/chats/${encodeURIComponent(sessionId)}/messages`, {
+export function sendMessage(
+  request: AuthorizedRequest,
+  sessionId: string,
+  message: string,
+  clientTurnId: string,
+  signal?: AbortSignal,
+) {
+  return request<ChatTurnResponse>(`/v1/chats/${encodeURIComponent(sessionId)}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: turnBody(message, clientTurnId),
+    signal,
   })
+}
+
+export function editMessage(
+  request: AuthorizedRequest,
+  sessionId: string,
+  messageId: string,
+  message: string,
+  clientTurnId: string,
+  signal?: AbortSignal,
+) {
+  return request<ChatTurnResponse>(
+    `/v1/chats/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: 'PUT',
+      body: turnBody(message, clientTurnId),
+      signal,
+    },
+  )
 }

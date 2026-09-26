@@ -1,11 +1,46 @@
-import { useState } from 'react'
-import { Send, MessageSquare, Loader2, Plus, Trash2, Sparkles, Copy, Check, Pencil } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, Send, MessageSquare, Loader2, Plus, Trash2, Sparkles, Copy, Check, Pencil } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { PageContainer, Card, Button, Input } from '../components/ui'
+import { PageContainer, Card, Button } from '../components/ui'
+import { ApiError } from '../api/client'
 import { useAuth } from '../features/auth/auth-state'
-import { listSessions, createSession, listMessages, sendMessage, deleteSession, rewindSession } from '../features/chat/chat-api'
-import type { ChatSession, ChatMessage } from '../features/chat/chat-api'
+import { listSessions, createSession, listMessages, sendMessage, deleteSession, editMessage } from '../features/chat/chat-api'
+import type { ChatMessage } from '../features/chat/chat-api'
 import { useLanguage } from '../i18n/language'
+
+interface CreateTurn {
+  kind: 'create'
+  content: string
+  clientTurnId: string
+}
+
+interface SendTurn {
+  kind: 'send'
+  content: string
+  clientTurnId: string
+  sessionId: string
+}
+
+interface EditTurn {
+  kind: 'edit'
+  content: string
+  clientTurnId: string
+  sessionId: string
+  messageId: string
+}
+
+type LocalTurn = CreateTurn | SendTurn | EditTurn
+type AbortableTurn<T extends LocalTurn> = T & { controller: AbortController }
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function failedTurnMessage(error: unknown) {
+  return error instanceof ApiError && error.code === 'ai_temporarily_unavailable'
+    ? 'Sorry, AI is temporarily unavailable. This message was not sent or saved. Please try again.'
+    : 'Sorry, this message could not be sent. It was not saved. Please try again.'
+}
 
 export function AIChatPage() {
   const { request } = useAuth()
@@ -14,13 +49,30 @@ export function AIChatPage() {
 
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [input, setInput] = useState('')
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  const [localTurn, setLocalTurn] = useState<LocalTurn | null>(null)
+  const [failedTurn, setFailedTurn] = useState<LocalTurn | null>(null)
+  const [failureMessage, setFailureMessage] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const activeRequestControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => activeRequestControllerRef.current?.abort(), [])
+
+  const beginRequest = () => {
+    const controller = new AbortController()
+    activeRequestControllerRef.current = controller
+    return controller
+  }
+
+  const finishRequest = (controller: AbortController) => {
+    if (activeRequestControllerRef.current === controller) {
+      activeRequestControllerRef.current = null
+    }
+  }
 
   const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
+    void navigator.clipboard.writeText(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }
@@ -28,84 +80,184 @@ export function AIChatPage() {
   // Fetch sessions
   const { data: sessionsData, isLoading: isLoadingSessions } = useQuery({
     queryKey: ['chat-sessions'],
-    queryFn: () => listSessions(request!),
+    queryFn: () => listSessions(request),
     enabled: !!request,
   })
 
   // Fetch active session messages
   const { data: messagesData, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['chat-messages', activeSessionId],
-    queryFn: () => listMessages(request!, activeSessionId!),
+    queryFn: () => listMessages(request, activeSessionId!),
     enabled: !!request && !!activeSessionId,
   })
 
-  // Create new session mutation
   const createMutation = useMutation({
-    mutationFn: (msg: string) => createSession(request!, msg),
+    mutationFn: ({ content, clientTurnId, controller }: AbortableTurn<CreateTurn>) => (
+      createSession(request, content, clientTurnId, controller.signal)
+    ),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      queryClient.setQueryData<{ messages: ChatMessage[] }>(['chat-messages', data.session.id], {
+        messages: [data.user_message, data.ai_message],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
       setActiveSessionId(data.session.id)
-      setInput('')
+      setLocalTurn(null)
+      setFailedTurn(null)
+      setFailureMessage(null)
     },
-    onSettled: () => {
-      setPendingMessage(null)
-    }
+    onError: async (error, { content, clientTurnId }) => {
+      await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      if (isAbortError(error)) {
+        setInput(content)
+        setLocalTurn(null)
+        setFailedTurn(null)
+        setFailureMessage(null)
+        return
+      }
+      setFailedTurn({ kind: 'create', content, clientTurnId })
+      setFailureMessage(failedTurnMessage(error))
+    },
+    onSettled: (_, __, { controller }) => finishRequest(controller),
   })
 
-  // Send message mutation
   const sendMutation = useMutation({
-    mutationFn: (msg: string) => sendMessage(request!, activeSessionId!, msg),
-    onSuccess: (data) => {
-      // Invalidate to fetch latest
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSessionId] })
-      // If title was generated/updated, we should refresh sessions too
-      if (data.session.title !== sessionsData?.sessions?.find(s => s.id === activeSessionId)?.title) {
-        queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+    mutationFn: ({ sessionId, content, clientTurnId, controller }: AbortableTurn<SendTurn>) => (
+      sendMessage(request, sessionId, content, clientTurnId, controller.signal)
+    ),
+    onSuccess: (data, { sessionId }) => {
+      queryClient.setQueryData<{ messages: ChatMessage[] }>(['chat-messages', sessionId], (current) => {
+        const messages = (current?.messages ?? []).filter((message) => (
+          message.id !== data.user_message.id && message.id !== data.ai_message.id
+        ))
+        return { messages: [...messages, data.user_message, data.ai_message] }
+      })
+      if (data.session.title !== sessionsData?.sessions?.find(s => s.id === sessionId)?.title) {
+        void queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
       }
+      setLocalTurn(null)
+      setFailedTurn(null)
+      setFailureMessage(null)
     },
-    onSettled: () => {
-      setPendingMessage(null)
-    }
+    onError: async (error, { sessionId, content, clientTurnId }) => {
+      await queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
+      const committed = queryClient.getQueryData<{ messages: ChatMessage[] }>(['chat-messages', sessionId])
+        ?.messages.some((message) => message.id === clientTurnId)
+      if (committed) {
+        setLocalTurn(null)
+        setFailedTurn(null)
+        setFailureMessage(null)
+        return
+      }
+      if (isAbortError(error)) {
+        setInput(content)
+        setLocalTurn(null)
+        setFailedTurn(null)
+        setFailureMessage(null)
+        return
+      }
+      setFailedTurn({ kind: 'send', sessionId, content, clientTurnId })
+      setFailureMessage(failedTurnMessage(error))
+    },
+    onSettled: (_, __, { controller }) => finishRequest(controller),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteSession(request!, id),
+    mutationFn: (id: string) => deleteSession(request, id),
     onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
       if (activeSessionId === deletedId) {
         setActiveSessionId(null)
       }
     },
   })
 
-  // Rewind chat mutation
-  const rewindMutation = useMutation({
-    mutationFn: (msgId: string) => rewindSession(request!, activeSessionId!, msgId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSessionId] })
+  const editMutation = useMutation({
+    mutationFn: ({ sessionId, messageId, content, clientTurnId, controller }: AbortableTurn<EditTurn>) => (
+      editMessage(request, sessionId, messageId, content, clientTurnId, controller.signal)
+    ),
+    onSuccess: (data, { sessionId, messageId }) => {
+      queryClient.setQueryData<{ messages: ChatMessage[] }>(['chat-messages', sessionId], (current) => {
+        if (!current) return current
+
+        if (current.messages.some((message) => message.id === data.user_message.id)) return current
+
+        const cutoffIndex = current.messages.findIndex((message) => message.id === messageId)
+        const retainedMessages = cutoffIndex >= 0 ? current.messages.slice(0, cutoffIndex) : current.messages
+        return { messages: [...retainedMessages, data.user_message, data.ai_message] }
+      })
+
+      if (data.session.title !== sessionsData?.sessions?.find((session) => session.id === sessionId)?.title) {
+        void queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      }
+      setLocalTurn(null)
+      setFailedTurn(null)
+      setFailureMessage(null)
     },
+    onError: async (error, { sessionId, messageId, content, clientTurnId }) => {
+      await queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] })
+      const committed = queryClient.getQueryData<{ messages: ChatMessage[] }>(['chat-messages', sessionId])
+        ?.messages.some((message) => message.id === clientTurnId)
+      if (committed) {
+        setLocalTurn(null)
+        setFailedTurn(null)
+        setFailureMessage(null)
+        return
+      }
+      if (isAbortError(error)) {
+        setEditingMessageId(messageId)
+        setEditContent(content)
+        setLocalTurn(null)
+        setFailedTurn(null)
+        setFailureMessage(null)
+        return
+      }
+      setFailedTurn({ kind: 'edit', sessionId, messageId, content, clientTurnId })
+      setFailureMessage(failedTurnMessage(error))
+    },
+    onSettled: (_, __, { controller }) => finishRequest(controller),
   })
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim() || createMutation.isPending || sendMutation.isPending) return
+  const submitLocalTurn = (turn: LocalTurn) => {
+    const controller = beginRequest()
+    setLocalTurn(turn)
+    setFailedTurn(null)
+    setFailureMessage(null)
+    if (turn.kind === 'create') createMutation.mutate({ ...turn, controller })
+    if (turn.kind === 'send') sendMutation.mutate({ ...turn, controller })
+    if (turn.kind === 'edit') editMutation.mutate({ ...turn, controller })
+  }
 
-    if (!activeSessionId) {
-      setPendingMessage(input)
-      createMutation.mutate(input)
-      setInput('')
-    } else {
-      // Optimistic UX for existing chat
-      setPendingMessage(input)
-      sendMutation.mutate(input)
-      setInput('')
-    }
+  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) e.preventDefault()
+    if (!input.trim() || isWaiting) return
+
+    const content = input
+    setInput('')
+    // Reset height of textarea back to single line when sending
+    const textarea = document.getElementById('chat-input') as HTMLTextAreaElement
+    if (textarea) textarea.style.height = '48px'
+    const clientTurnId = crypto.randomUUID()
+    submitLocalTurn(activeSessionId
+      ? { kind: 'send', sessionId: activeSessionId, content, clientTurnId }
+      : { kind: 'create', content, clientTurnId })
   }
 
   const sessions = sessionsData?.sessions || []
   const messages = messagesData?.messages || []
-  const isWaiting = createMutation.isPending || sendMutation.isPending
-  const hasMessagesOrPending = messages.length > 0 || pendingMessage !== null
+  const visibleLocalTurn = localTurn && (
+    (localTurn.kind === 'create' && activeSessionId === null)
+    || (localTurn.kind !== 'create' && localTurn.sessionId === activeSessionId)
+  ) ? localTurn : null
+  const visibleFailedTurn = visibleLocalTurn && failedTurn?.clientTurnId === visibleLocalTurn.clientTurnId
+    ? failedTurn
+    : null
+  const optimisticCutoffMessageId = visibleLocalTurn?.kind === 'edit' ? visibleLocalTurn.messageId : null
+  const cutoffIndex = optimisticCutoffMessageId
+    ? messages.findIndex((message) => message.id === optimisticCutoffMessageId)
+    : -1
+  const visibleMessages = cutoffIndex >= 0 ? messages.slice(0, cutoffIndex) : messages
+  const isWaiting = createMutation.isPending || sendMutation.isPending || editMutation.isPending
+  const hasMessagesOrPending = visibleMessages.length > 0 || visibleLocalTurn !== null
 
   const handleEditClick = (msg: ChatMessage) => {
     setEditingMessageId(msg.id)
@@ -117,22 +269,45 @@ export function AIChatPage() {
     setEditContent('')
   }
 
-  const handleSaveEdit = async (msgId: string) => {
-    if (!editContent.trim()) return
+  const handleSaveEdit = (msgId: string) => {
+    if (!activeSessionId || !editContent.trim() || isWaiting) return
 
     const newText = editContent
     setEditingMessageId(null)
     setEditContent('')
-    setPendingMessage(newText)
+    submitLocalTurn({
+      kind: 'edit',
+      sessionId: activeSessionId,
+      messageId: msgId,
+      content: newText,
+      clientTurnId: crypto.randomUUID(),
+    })
+  }
 
-    // Fire rewind first, then send new message
-    try {
-      await rewindSession(request!, activeSessionId!, msgId)
-      sendMutation.mutate(newText)
-    } catch (e) {
-      // Revert if rewind fails
-      setPendingMessage(null)
+  const handleCancelRequest = () => activeRequestControllerRef.current?.abort()
+
+  const handleRetryFailedTurn = () => {
+    if (failedTurn) submitLocalTurn(failedTurn)
+  }
+
+  const handleEditFailedTurn = () => {
+    if (!failedTurn) return
+    const turn = failedTurn
+    setLocalTurn(null)
+    setFailedTurn(null)
+    setFailureMessage(null)
+    if (turn.kind === 'edit') {
+      setEditingMessageId(turn.messageId)
+      setEditContent(turn.content)
+    } else {
+      setInput(turn.content)
     }
+  }
+
+  const handleDiscardFailedTurn = () => {
+    setLocalTurn(null)
+    setFailedTurn(null)
+    setFailureMessage(null)
   }
 
   return (
@@ -256,7 +431,7 @@ export function AIChatPage() {
                   {isLoadingMessages ? (
                      <div className="flex justify-center p-4"><Loader2 className="size-6 animate-spin text-brand" /></div>
                   ) : (
-                    messages.map((msg) => {
+                    visibleMessages.map((msg) => {
                       if (editingMessageId === msg.id) {
                         return (
                           <div key={msg.id} className="ml-auto flex w-full max-w-[85%] flex-row-reverse items-start gap-3">
@@ -268,10 +443,10 @@ export function AIChatPage() {
                                 autoFocus
                               />
                               <div className="flex items-center gap-2">
-                                <Button variant="secondary" size="sm" onClick={handleCancelEdit}>
+                                <Button variant="secondary" size="compact" onClick={handleCancelEdit}>
                                   {translate('Cancel')}
                                 </Button>
-                                <Button size="sm" onClick={() => handleSaveEdit(msg.id)} disabled={!editContent.trim()}>
+                                <Button size="compact" onClick={() => handleSaveEdit(msg.id)} disabled={!editContent.trim()}>
                                   {translate('Send')}
                                 </Button>
                               </div>
@@ -346,17 +521,22 @@ export function AIChatPage() {
                     )})
                   )}
 
-                  {pendingMessage && (
+                  {visibleLocalTurn && (
                     <div className="ml-auto flex w-full max-w-[85%] items-start gap-3 flex-row-reverse">
-                      <div className="flex flex-col items-end">
+                      <div className="flex flex-col items-end gap-1">
                         <div className="flex flex-col rounded-2xl bg-brand px-5 py-3.5 text-white shadow-sm">
-                          <p className="whitespace-pre-wrap leading-relaxed">{pendingMessage}</p>
+                          <p className="whitespace-pre-wrap leading-relaxed">{visibleLocalTurn.content}</p>
                         </div>
+                        {visibleFailedTurn && (
+                          <p className="text-xs font-semibold text-error-strong" role="status">
+                            {translate('Could not send · Not saved')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {isWaiting && (
+                  {isWaiting && visibleLocalTurn && (
                     <div className="mr-auto flex w-full max-w-[90%] items-start gap-3">
                       <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                         <Sparkles className="size-5" />
@@ -369,6 +549,32 @@ export function AIChatPage() {
                       </div>
                     </div>
                   )}
+
+                  {visibleFailedTurn && !isWaiting && (
+                    <div className="mr-auto flex w-full max-w-[90%] items-start gap-3" role="alert">
+                      <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-error/10 text-error-strong">
+                        <AlertCircle aria-hidden="true" className="size-5" />
+                      </div>
+                      <div className="flex min-w-0 flex-col items-start gap-3">
+                        <div className="rounded-2xl border border-error-strong/20 bg-error/10 px-5 py-3.5 text-text-primary">
+                          <p className="text-sm font-medium">
+                            {translate(failureMessage ?? 'Sorry, this message could not be sent. It was not saved. Please try again.')}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="compact" onClick={handleRetryFailedTurn}>
+                            {translate('Try again')}
+                          </Button>
+                          <Button variant="secondary" size="compact" onClick={handleEditFailedTurn}>
+                            {translate('Edit message')}
+                          </Button>
+                          <Button variant="ghost" size="compact" onClick={handleDiscardFailedTurn}>
+                            {translate('Cancel')}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -376,17 +582,47 @@ export function AIChatPage() {
 
           <div className="border-t border-border-ui bg-surface p-4">
             <div className="mx-auto w-full max-w-3xl">
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  placeholder={translate('Type your message here...')}
-                  className="flex-1"
-                  disabled={isWaiting}
-                />
-                <Button type="submit" disabled={!input.trim() || isWaiting}>
-                  <Send className="size-4" />
-                  <span className="sr-only">{translate('Send')}</span>
+              <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+                <label className="min-w-0 flex-1 relative">
+                  <span className="sr-only">{translate('Type your message here...')}</span>
+                  <textarea
+                    id="chat-input"
+                    value={input}
+                    onChange={e => {
+                      setInput(e.target.value);
+                      e.target.style.height = '48px'; // Reset height briefly to get true scrollHeight
+                      const newHeight = Math.min(e.target.scrollHeight, 200);
+                      e.target.style.height = `${newHeight}px`;
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
+                    placeholder={translate('Type your message here...')}
+                    rows={1}
+                    className="ui-transition block w-full resize-none rounded-2xl border border-border bg-surface px-4 py-3 text-body text-text-primary shadow-card outline-none placeholder:text-text-secondary focus:border-brand disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-text-tertiary disabled:shadow-none"
+                    style={{
+                      height: '48px',
+                      minHeight: '48px',
+                      maxHeight: '200px',
+                      overflowY: input.length === 0 ? 'hidden' : 'auto'
+                    }}
+                    disabled={isWaiting}
+                  />
+                </label>
+                <Button
+                  className="mb-[1px]"
+                  type={isWaiting ? 'button' : 'submit'}
+                  onClick={isWaiting ? handleCancelRequest : undefined}
+                  disabled={!isWaiting && !input.trim()}
+                  title={translate(isWaiting ? 'Cancel' : 'Send')}
+                >
+                  {isWaiting
+                    ? <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                    : <Send aria-hidden="true" className="size-4" />}
+                  <span className="sr-only">{translate(isWaiting ? 'Cancel' : 'Send')}</span>
                 </Button>
               </form>
               <p className="mt-3 text-center text-[11px] text-text-tertiary">

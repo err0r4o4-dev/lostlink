@@ -47,7 +47,10 @@ func (client *AIClient) GenerateChat(ctx context.Context, request ChatRequest) (
 
 	response, err := client.client.Do(req)
 	if err != nil {
-		return nil, ErrAIUnavailable
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, fmt.Errorf("%w: request failed", ErrAIUnavailable)
 	}
 	defer response.Body.Close()
 
@@ -59,7 +62,7 @@ func (client *AIClient) GenerateChat(ctx context.Context, request ChatRequest) (
 	var result ChatResponse
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 1<<20))
 	if err := decoder.Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode chat response: %w", err)
+		return nil, fmt.Errorf("%w: decode chat response", ErrAIUnavailable)
 	}
 
 	return &result, nil
