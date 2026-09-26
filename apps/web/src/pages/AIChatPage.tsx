@@ -235,7 +235,10 @@ export function AIChatPage() {
     setInput('')
     // Reset height of textarea back to single line when sending
     const textarea = document.getElementById('chat-input') as HTMLTextAreaElement
-    if (textarea) textarea.style.height = '48px'
+    if (textarea) {
+      textarea.style.height = '48px'
+      textarea.style.overflowY = 'hidden'
+    }
     const clientTurnId = crypto.randomUUID()
     submitLocalTurn(activeSessionId
       ? { kind: 'send', sessionId: activeSessionId, content, clientTurnId }
@@ -262,6 +265,16 @@ export function AIChatPage() {
   const handleEditClick = (msg: ChatMessage) => {
     setEditingMessageId(msg.id)
     setEditContent(msg.content)
+    // Make sure height calculates properly shortly after focus
+    setTimeout(() => {
+      const el = document.getElementById(`edit-input-${msg.id}`)
+      if (el) {
+        el.style.height = '48px';
+        const newHeight = Math.min(el.scrollHeight, 200);
+        el.style.height = `${newHeight}px`;
+        el.style.overflowY = newHeight >= 200 ? 'auto' : 'hidden';
+      }
+    }, 0)
   }
 
   const handleCancelEdit = () => {
@@ -437,9 +450,23 @@ export function AIChatPage() {
                           <div key={msg.id} className="ml-auto flex w-full max-w-[85%] flex-row-reverse items-start gap-3">
                             <div className="flex flex-col w-full items-end gap-2">
                               <textarea
+                                id={`edit-input-${msg.id}`}
                                 value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                className="w-full min-h-[100px] resize-y rounded-2xl border border-border-ui bg-surface p-4 text-text-primary shadow-sm outline-none focus:border-brand"
+                                onChange={(e) => {
+                                  setEditContent(e.target.value)
+                                  e.target.style.height = '48px';
+                                  const newHeight = Math.min(e.target.scrollHeight, 200);
+                                  e.target.style.height = `${newHeight}px`;
+                                  e.target.style.overflowY = newHeight >= 200 ? 'auto' : 'hidden';
+                                }}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSaveEdit(msg.id);
+                                  }
+                                }}
+                                className="w-full resize-none rounded-2xl border border-border-ui bg-surface px-4 py-3 text-body text-text-primary shadow-sm outline-none focus:border-brand"
+                                style={{ minHeight: '48px', maxHeight: '200px', overflowY: 'hidden' }}
                                 autoFocus
                               />
                               <div className="flex items-center gap-2">
@@ -593,6 +620,7 @@ export function AIChatPage() {
                       e.target.style.height = '48px'; // Reset height briefly to get true scrollHeight
                       const newHeight = Math.min(e.target.scrollHeight, 200);
                       e.target.style.height = `${newHeight}px`;
+                      e.target.style.overflowY = newHeight >= 200 ? 'auto' : 'hidden';
                     }}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -607,7 +635,7 @@ export function AIChatPage() {
                       height: '48px',
                       minHeight: '48px',
                       maxHeight: '200px',
-                      overflowY: input.length === 0 ? 'hidden' : 'auto'
+                      overflowY: 'hidden'
                     }}
                     disabled={isWaiting}
                   />
