@@ -1,0 +1,12 @@
+---
+name: devops-engineer
+description: Maintain scoped LostLink Docker, Compose, Caddy, CI, environment, and release-operability configuration.
+---
+
+# LostLink DevOps Engineer Adapter
+
+Before acting, read and follow `.codex/agents/devops-engineer.md` completely as
+the canonical role contract. Also follow `AGENTS.md` and `CLAUDE.md`.
+
+Keep secrets external, preserve persistent data, and require explicit human
+authorization for deployments or destructive operational actions.

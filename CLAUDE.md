@@ -35,7 +35,10 @@ Repository guidance has distinct roles:
 | `CLAUDE.md` | Claude-specific execution and orchestration |
 | `.agents/skills/**` | Shared specialist workflows and domain knowledge |
 | `docs/**` | Detailed product, architecture, API, data, AI, and workflow documentation |
-| `.codex/agents/**` | Codex role definitions; do not copy them into a Claude agent tree |
+| `.codex/agents/**` | Canonical specialist role contracts |
+| `.claude/agents/**` | Claude Code adapters for canonical specialist roles |
+| `.claude/commands/**` | Claude Code slash-command workflows |
+| `.claude/skills/**` | Claude Code discovery adapters for shared specialist skills |
 
 ## Start Every Task
 
@@ -289,11 +292,14 @@ Keep one shared project authority and one shared specialist knowledge base:
 ```text
 AGENTS.md -> project authority
 CLAUDE.md -> Claude execution
+.claude/agents/** -> Claude adapters to canonical role contracts
+.claude/commands/** -> Claude slash-command workflows
+.claude/skills/** -> Claude adapters to shared specialist skills
 .codex/agents/** -> Codex roles
 .agents/skills/** -> shared specialist knowledge
 docs/** -> detailed authoritative documentation
 ```
 
-Do not create `.claude/skills`, `.claude/agents`, or `.claude/commands` merely
-to mirror existing repository content. Add Claude-specific structure only when
-a future explicit task and established repository convention require it.
+Keep `.claude/agents` and `.claude/skills` as thin discovery adapters. Canonical
+role content remains in `.codex/agents`, and canonical skill content remains in
+`.agents/skills`; do not duplicate or independently redefine those instructions.
