@@ -16,6 +16,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=100)
     session_id: UUID | None = None
+    language: str = Field(default="th", max_length=10)
 
 
 class ChatAnalysis(BaseModel):

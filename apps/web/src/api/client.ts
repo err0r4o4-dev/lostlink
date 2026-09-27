@@ -19,6 +19,13 @@ function requestHeaders(init?: RequestInit, accessToken?: string | null) {
   if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
+
+  // Attach Accept-Language header globally
+  if (!headers.has('Accept-Language')) {
+    const lang = typeof window !== 'undefined' ? window.localStorage.getItem('lostlink-language') || 'th' : 'th'
+    headers.set('Accept-Language', lang)
+  }
+
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
   return headers
 }

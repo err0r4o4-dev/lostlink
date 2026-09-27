@@ -28,6 +28,7 @@ type Message struct {
 type ChatRequest struct {
 	SessionID *string       `json:"session_id,omitempty"`
 	Messages  []ChatMessage `json:"messages"`
+	Language  string        `json:"language,omitempty"`
 }
 
 type ChatMessage struct {

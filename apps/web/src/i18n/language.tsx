@@ -885,6 +885,8 @@ function localizeNode(node: ReactNode, translate: (text: string) => string): Rea
   if (Array.isArray(node)) return (node as ReactNode[]).map((child) => localizeNode(child, translate))
   if (!isValidElement<Record<string, unknown>>(node)) return node
 
+  if (node.props['data-no-translate']) return node
+
   const nextProps: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(node.props)) {
     if (translatedStringProps.has(key) && typeof value === 'string') {

@@ -12,6 +12,7 @@ import (
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/auth"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/claim"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/matching"
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/middleware/i18n"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/notification"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/report"
 	"github.com/err0r4o4-dev/lostlink/apps/api/internal/tracking"
@@ -48,7 +49,7 @@ func New(requestLogWriter io.Writer, configured ...Options) http.Handler {
 		Formatter: readableRequestLog,
 		Output:    requestLogWriter,
 		SkipPaths: []string{"/health"},
-	}), gin.Recovery())
+	}), gin.Recovery(), i18n.Middleware())
 	router.GET("/health", health)
 	if options.Auth != nil {
 		v1 := router.Group("/v1")

@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/err0r4o4-dev/lostlink/apps/api/internal/middleware/i18n"
 	"github.com/google/uuid"
 )
 
@@ -267,7 +268,12 @@ func (s *Service) committedTurn(
 
 func (s *Service) generate(ctx context.Context, sessionID uuid.UUID, history []ChatMessage) (*ChatResponse, error) {
 	sessionIDValue := sessionID.String()
-	response, err := s.aiClient.GenerateChat(ctx, ChatRequest{SessionID: &sessionIDValue, Messages: history})
+	lang := i18n.FromContext(ctx)
+	response, err := s.aiClient.GenerateChat(ctx, ChatRequest{
+		SessionID: &sessionIDValue,
+		Messages:  history,
+		Language:  lang,
+	})
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr

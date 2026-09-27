@@ -510,7 +510,7 @@ export function AIChatPage() {
                                 : 'bg-fill-ui text-text-primary'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            <p data-no-translate={true} className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                           </div>
 
                           {/* Copy / Edit Button Container */}
@@ -557,7 +557,7 @@ export function AIChatPage() {
                     <div className="ml-auto flex w-full max-w-[85%] items-start gap-3 flex-row-reverse">
                       <div className="flex flex-col items-end gap-1">
                         <div className="flex flex-col rounded-2xl bg-brand px-5 py-3.5 text-white shadow-sm">
-                          <p className="whitespace-pre-wrap leading-relaxed">{visibleLocalTurn.content}</p>
+                          <p data-no-translate={true} className="whitespace-pre-wrap leading-relaxed">{visibleLocalTurn.content}</p>
                         </div>
                         {visibleFailedTurn && (
                           <p className="text-xs font-semibold text-error-strong" role="status">
