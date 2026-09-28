@@ -519,7 +519,7 @@ export function AIChatPage() {
                           }`}>
                             <button
                               onClick={() => handleCopy(msg.content, msg.id)}
-                              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors hover:bg-fill-hover ${
+                              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors hover:font-bold ${
                                 copiedId === msg.id ? 'text-success' : 'text-text-tertiary hover:text-text-secondary'
                               }`}
                               title={translate('Copy message')}
@@ -540,7 +540,7 @@ export function AIChatPage() {
                             {msg.role === 'user' && (
                               <button
                                 onClick={() => handleEditClick(msg)}
-                                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-tertiary transition-colors hover:bg-fill-hover hover:text-text-secondary"
+                                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-tertiary transition-colors hover:font-bold hover:text-text-secondary"
                                 title={translate('Edit message')}
                               >
                                 <Pencil className="size-3" />
@@ -587,22 +587,19 @@ export function AIChatPage() {
                       <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-error/10 text-error-strong">
                         <AlertCircle aria-hidden="true" className="size-5" />
                       </div>
-                      <div className="flex min-w-0 flex-col items-start gap-3">
+                      <div className="flex min-w-0 flex-col items-start gap-1">
                         <div className="rounded-2xl border border-error-strong/20 bg-error/10 px-5 py-3.5 text-text-primary">
                           <p className="text-sm font-medium">
                             {translate(failureMessage ?? 'Sorry, this message could not be sent. It was not saved. Please try again.')}
                           </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button size="compact" onClick={handleRetryFailedTurn}>
+                        <div className="flex flex-wrap gap-1 ml-3">
+                          <button
+                            onClick={handleRetryFailedTurn}
+                            className="flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors font-semibold text-error-strong hover:font-bold"
+                          >
                             {translate('Try again')}
-                          </Button>
-                          <Button variant="secondary" size="compact" onClick={handleEditFailedTurn}>
-                            {translate('Edit message')}
-                          </Button>
-                          <Button variant="ghost" size="compact" onClick={handleDiscardFailedTurn}>
-                            {translate('Cancel')}
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     </div>

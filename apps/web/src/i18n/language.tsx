@@ -49,7 +49,7 @@ const thaiTranslations: Record<string, string> = {
   'Edit': 'แก้ไข',
   'Edit message': 'แก้ไขข้อความ',
   'Could not send · Not saved': 'ส่งไม่สำเร็จ',
-  'Sorry, AI is temporarily unavailable. This message was not sent or saved. Please try again.': 'ขออภัยครับ ระบบ AI ขัดข้องชั่วคราว ข้อความนี้ยังไม่ถูกส่งหรือบันทึก กรุณาลองอีกครั้ง',
+  'Sorry, AI is temporarily unavailable. This message was not sent or saved. Please try again.': 'ขออภัยครับ ระบบ AI ขัดข้องชั่วคราว กรุณาลองอีกครั้ง',
   'Sorry, this message could not be sent. It was not saved. Please try again.': 'ขออภัยครับ ไม่สามารถส่งข้อความนี้ได้ กรุณาลองอีกครั้ง',
   'Save & Submit': 'บันทึกและส่งใหม่',
   'Primary': 'เมนูหลัก',
