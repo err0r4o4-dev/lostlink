@@ -113,8 +113,8 @@ export function AppShell() {
           </div>
         </aside>
         <div className="min-w-0">
-          <GlassSurface className="safe-area-top sticky top-0 z-navigation rounded-none border-x-0 border-t-0 shadow-card">
-            <header className="mx-auto flex h-(--layout-topbar) max-w-content items-center justify-between px-5 md:px-7 lg:px-8 xl:px-10">
+          <GlassSurface className="safe-area-top sticky top-0 z-navigation h-(--layout-topbar) rounded-none border-x-0 border-t-0 shadow-card">
+            <header className="mx-auto flex h-full max-w-content items-center justify-between px-5 md:px-7 lg:px-8 xl:px-10">
               <div className="lg:hidden"><BrandMark compact /></div>
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
               <nav aria-label="Primary" className="hidden items-center gap-1 md:flex lg:hidden"><NavigationLinks compact items={tabletNavigation} /></nav>

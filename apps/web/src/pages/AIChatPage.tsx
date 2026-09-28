@@ -324,8 +324,8 @@ export function AIChatPage() {
   }
 
   return (
-    <PageContainer className="lg:py-8">
-      <div className="flex h-[calc(100dvh-9rem)] min-h-[38rem] gap-4">
+    <PageContainer className="lg:h-[calc(100dvh-var(--layout-topbar))] lg:overflow-hidden lg:py-8">
+      <div className="flex h-[calc(100dvh-9rem)] min-h-[38rem] gap-4 lg:h-full lg:min-h-0">
         {/* Sidebar */}
         <Card className="hidden w-64 shrink-0 flex-col gap-4 p-3 md:flex xl:w-72">
           <Button

@@ -81,6 +81,22 @@ test('keeps representative surfaces responsive at every required width', async (
   }
 })
 
+test('keeps the desktop chat inside the viewport', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+  await page.route('**/api/v1/chats', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ sessions: [] }) })
+  })
+  await page.setViewportSize({ width: 1440, height: 650 })
+  await page.goto('/chat')
+  await expect(page.getByRole('heading', { name: 'New Chat' })).toBeVisible()
+
+  const dimensions = await page.evaluate(() => ({
+    clientHeight: document.documentElement.clientHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+  }))
+  expect(dimensions.scrollHeight).toBeLessThanOrEqual(dimensions.clientHeight)
+})
+
 test('validates and reviews a report before submission', async ({ page }) => {
   await mockAuthenticatedSession(page)
   await page.goto('/report/lost')
