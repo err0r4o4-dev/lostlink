@@ -14,7 +14,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
     <div
       ref={ref}
       className={cn(
-        'rounded-card border border-border bg-surface',
+        'rounded-card border border-border bg-surface ring-1 ring-white/55',
         elevated ? 'shadow-floating' : 'shadow-card',
         className,
       )}

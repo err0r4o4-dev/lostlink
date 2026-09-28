@@ -16,7 +16,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
       <span className="sr-only">{label}</span>
       <span
         className={cn(
-          'ui-transition flex min-h-12 items-center gap-3 rounded-control border border-border bg-surface px-4 shadow-card focus-within:border-brand',
+          'ui-transition flex min-h-12 items-center gap-3 rounded-control border border-border bg-surface/95 px-4 shadow-card focus-within:border-brand focus-within:bg-surface focus-within:shadow-floating',
           props.disabled && 'bg-surface-secondary text-text-tertiary shadow-none',
           className,
         )}

@@ -9,6 +9,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Smartphone,
 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -57,25 +58,25 @@ function CampusLostItemVisual() {
     <Localize><div
       role="img"
       aria-label="Illustration of a backpack, identification card, and drink cup as example items that may be found on campus."
-      className="relative mx-auto w-full max-w-xl px-3 py-6 md:px-8 md:py-10"
+      className="relative mx-auto w-full max-w-xl px-3 py-8 md:px-8 md:py-12"
     >
-      <div aria-hidden="true" className="absolute right-0 top-0 size-36 rounded-full bg-brand-soft opacity-80 blur-sm md:size-48" />
-      <div aria-hidden="true" className="absolute bottom-0 left-0 size-32 rounded-full bg-surface-secondary md:size-44" />
+      <div aria-hidden="true" className="absolute right-0 top-0 size-40 rounded-full bg-brand-soft opacity-90 blur-2xl md:size-52" />
+      <div aria-hidden="true" className="absolute bottom-0 left-0 size-36 rounded-full bg-info/10 blur-xl md:size-44" />
 
-      <div className="relative rounded-overlay border border-border bg-surface p-4 shadow-floating md:p-6">
+      <div className="relative rounded-overlay border border-white/80 bg-surface/88 p-4 shadow-floating backdrop-blur-sm md:p-6">
         <div className="flex items-center justify-between border-b border-border pb-4">
-          <span className="h-2 w-16 rounded-pill bg-brand/55" />
-          <span className="size-3 rounded-pill bg-brand" />
+          <span className="text-label font-bold uppercase tracking-label text-brand">Campus finds</span>
+          <span className="size-2.5 rounded-pill bg-success shadow-card" />
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="flex min-h-28 items-center justify-center rounded-card bg-surface-secondary text-text-secondary md:min-h-36">
-            <Backpack aria-hidden="true" className="size-14 md:size-16" strokeWidth={1.5} />
+          <div className="flex min-h-28 items-center justify-center rounded-card bg-gradient-to-br from-brand-soft/70 to-surface-secondary text-text-primary shadow-card md:min-h-36">
+            <Backpack aria-hidden="true" className="size-14 md:size-16" strokeWidth={1.35} />
           </div>
-          <div className="flex min-h-28 items-center justify-center rounded-card bg-surface-secondary text-brand/70 md:min-h-36">
+          <div className="flex min-h-28 items-center justify-center rounded-card bg-gradient-to-br from-brand-soft to-surface text-brand/80 shadow-card md:min-h-36">
             <IdCard aria-hidden="true" className="size-12 md:size-14" strokeWidth={1.5} />
           </div>
-          <div className="flex min-h-28 items-center justify-center rounded-card bg-surface-secondary text-text-secondary md:min-h-36">
+          <div className="flex min-h-28 items-center justify-center rounded-card bg-gradient-to-br from-info/10 to-surface text-info-strong shadow-card md:min-h-36">
             <CupSoda aria-hidden="true" className="size-11 md:size-13" strokeWidth={1.5} />
           </div>
         </div>
@@ -98,6 +99,9 @@ function CampusLostItemVisual() {
 
       <span className="absolute bottom-2 left-0 flex size-12 items-center justify-center rounded-feature border border-border bg-surface text-brand shadow-card md:bottom-8 md:size-14">
         <KeyRound aria-hidden="true" className="size-6" />
+      </span>
+      <span className="absolute right-2 top-1 flex size-12 rotate-6 items-center justify-center rounded-feature border border-white/80 bg-surface text-info shadow-floating md:right-5 md:top-5 md:size-14">
+        <Smartphone aria-hidden="true" className="size-6" />
       </span>
     </div></Localize>
   )
@@ -125,12 +129,12 @@ export function GuestHomePage() {
     <Localize><main ref={mainRef} id="main-content" tabIndex={-1} className="focus:outline-none">
       <section aria-labelledby="guest-home-title" className="relative overflow-hidden border-b border-border">
         <div aria-hidden="true" className="absolute -right-24 top-12 size-72 rounded-full bg-brand-soft/70 blur-3xl" />
-        <div className="relative mx-auto grid w-full items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:w-[70%] lg:px-0 lg:py-24 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="relative mx-auto grid w-full max-w-content items-center gap-10 px-5 py-14 md:px-7 md:py-20 lg:px-10 lg:py-24 xl:grid-cols-[1.08fr_0.92fr]">
           <div>
             <p className="inline-flex rounded-pill bg-brand-soft px-4 py-2 text-label font-semibold text-brand">
               Lost &amp; Found for universities
             </p>
-            <h1 id="guest-home-title" className="mt-6 max-w-3xl text-page-mobile font-bold tracking-tight text-balance text-text-primary md:text-page">
+            <h1 id="guest-home-title" className="mt-6 max-w-3xl text-page-mobile font-bold tracking-tight text-balance text-text-primary md:text-page xl:text-display">
               Lost items<br />may be waiting for you to find them
             </h1>
             <p className="mt-5 max-w-2xl text-body text-text-secondary-strong md:text-lead">
@@ -140,6 +144,9 @@ export function GuestHomePage() {
               <Link to="/register" className={`${buttonVariants({ variant: 'primary' })} min-h-12 sm:min-w-44`}>
                 Get started
                 <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+              <Link to="/help" className={`${buttonVariants({ variant: 'secondary' })} min-h-12 sm:min-w-40`}>
+                Learn more
               </Link>
             </div>
             <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-secondary">
@@ -154,7 +161,7 @@ export function GuestHomePage() {
       </section>
 
       <section aria-labelledby="how-it-works-title" className="bg-surface py-16 md:py-20 lg:py-24">
-        <div className="mx-auto w-full px-5 md:px-7 lg:w-[70%] lg:px-0">
+        <div className="mx-auto w-full max-w-content px-5 md:px-7 lg:px-10">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-caption font-semibold text-brand">How it works</p>
             <h2 id="how-it-works-title" className="mt-2 text-page-mobile font-bold tracking-tight text-text-primary md:text-page">
@@ -180,7 +187,7 @@ export function GuestHomePage() {
       </section>
 
       <section aria-labelledby="privacy-title" className="py-16 md:py-20 lg:py-24">
-        <div className="mx-auto w-full px-5 md:px-7 lg:w-[70%] lg:px-0">
+        <div className="mx-auto w-full max-w-content px-5 md:px-7 lg:px-10">
           <div className="rounded-overlay border border-border bg-surface p-6 shadow-card md:p-10">
             <p className="text-caption font-semibold text-brand">Privacy by design</p>
             <h2 id="privacy-title" className="mt-2 max-w-4xl text-page-mobile font-bold tracking-tight text-text-primary md:text-page">

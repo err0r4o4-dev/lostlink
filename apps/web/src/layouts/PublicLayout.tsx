@@ -21,7 +21,7 @@ function PublicBrand() {
 
 export function PublicLayout() {
   return (
-    <Localize><div className="min-h-screen bg-canvas text-text-primary">
+    <Localize><div className="app-backdrop min-h-screen text-text-primary">
       <a
         href="#main-content"
         className="fixed left-4 top-4 z-toast -translate-y-24 rounded-control bg-brand px-4 py-3 font-semibold text-on-brand focus-visible:translate-y-0"
@@ -29,8 +29,8 @@ export function PublicLayout() {
         Skip to content
       </a>
 
-      <header className="safe-area-top sticky top-0 z-navigation border-b border-border bg-surface">
-        <div className="mx-auto flex min-h-18 w-full items-center justify-between gap-3 px-5 md:px-7 lg:w-[70%] lg:px-0">
+      <header className="safe-area-top sticky top-0 z-navigation border-b border-border bg-surface/92 backdrop-blur-glass">
+        <div className="mx-auto flex min-h-18 w-full max-w-content items-center justify-between gap-3 px-5 md:px-7 lg:px-10">
           <PublicBrand />
           <nav className="flex items-center gap-2 md:gap-3" aria-label="Authentication">
             <LanguageToggle />
@@ -44,7 +44,7 @@ export function PublicLayout() {
       <Outlet />
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto grid w-full gap-8 px-5 py-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:px-7 lg:w-[70%] lg:px-0">
+        <div className="mx-auto grid w-full max-w-content gap-8 px-5 py-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:px-7 lg:px-10">
           <div>
             <PublicBrand />
             <p className="mt-3 max-w-xl text-caption text-text-secondary">

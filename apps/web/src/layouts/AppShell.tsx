@@ -101,15 +101,19 @@ export function LanguageToggle() {
 
 export function AppShell() {
   return (
-    <Localize><div className="app-backdrop min-h-screen">
+    <Localize><div className="app-backdrop min-h-screen overflow-x-clip">
       <a href="#main-content" className="fixed left-4 top-4 z-toast -translate-y-24 rounded-control bg-brand px-4 py-3 font-semibold text-on-brand focus-visible:translate-y-0">Skip to content</a>
       <div className="app-shell-grid min-h-screen lg:grid">
-        <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-border bg-surface/90 px-6 py-6 lg:flex">
+        <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-border bg-surface/95 px-5 py-5 shadow-card lg:flex xl:px-6 xl:py-6">
           <BrandMark />
-          <nav aria-label="Primary" className="mt-8 grid gap-1"><NavigationLinks /></nav>
+          <nav aria-label="Primary" className="mt-8 grid gap-1.5"><NavigationLinks /></nav>
+          <div className="mt-auto rounded-card border border-brand/10 bg-brand-soft/55 p-4">
+            <p className="text-label font-bold uppercase tracking-label text-brand">Privacy first</p>
+            <p className="mt-2 text-label leading-5 text-text-secondary-strong">Discovery stays separate from private ownership evidence.</p>
+          </div>
         </aside>
         <div className="min-w-0">
-          <GlassSurface className="safe-area-top sticky top-0 z-navigation rounded-none border-x-0 border-t-0">
+          <GlassSurface className="safe-area-top sticky top-0 z-navigation rounded-none border-x-0 border-t-0 shadow-card">
             <header className="mx-auto flex h-(--layout-topbar) max-w-content items-center justify-between px-5 md:px-7 lg:px-8 xl:px-10">
               <div className="lg:hidden"><BrandMark compact /></div>
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
