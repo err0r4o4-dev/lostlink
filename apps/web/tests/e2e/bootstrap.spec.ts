@@ -27,6 +27,8 @@ test('shows the public guest home and its trust boundaries', async ({ page }) =>
 
   await page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toContainText('ของที่หาย')
+  await expect(page.getByRole('link', { name: 'เรียนรู้เพิ่มเติม' })).toBeVisible()
+  await expect(page.getByText('ของที่พบในมหาวิทยาลัย')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Switch language to English' })).toBeVisible()
 })
 

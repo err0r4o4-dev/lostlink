@@ -20,8 +20,9 @@ const resetSchema = z.object({ token: z.string().trim().min(1, 'Enter the recove
 
 function AuthLayout({ children, description, title }: { children: ReactNode; description: string; title: string }) {
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-lg"><div className="mb-8 flex justify-center"><BrandMark /></div><Card elevated className="p-5 md:p-8"><h1 className="text-page-mobile font-semibold tracking-tight md:text-page">{title}</h1><p className="mt-3 text-caption text-text-secondary">{description}</p><div className="mt-7">{children}</div></Card></div>
+    <PageContainer width="form" className="flex min-h-screen items-center justify-center py-10 md:py-14">
+      <div aria-hidden="true" className="auth-atmosphere fixed inset-0 -z-10" />
+      <div className="mx-auto w-full max-w-xl"><div className="mb-8 flex justify-center"><BrandMark /></div><Card elevated className="border-white/80 p-5 shadow-floating md:p-9"><h1 className="text-page-mobile font-bold tracking-tight md:text-page">{title}</h1><p className="mt-3 text-body text-text-secondary">{description}</p><div className="mt-7">{children}</div></Card></div>
     </PageContainer>
   )
 }

@@ -8,6 +8,7 @@ import { z } from 'zod'
 
 import { apiErrorMessage } from '../api/error'
 import { FileUpload } from '../components/file-upload'
+import { PageArtwork } from '../components/page-artwork'
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, Notice, PageContainer, PageHeader, StatusBadge, Textarea, buttonVariants } from '../components/ui'
 import { useAuth } from '../features/auth/auth-state'
 import {
@@ -44,11 +45,19 @@ export function ClaimsPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="Ownership workflow" title="My claims" description="Review drafts, submitted evidence, staff decisions, and the next authorized action." />
-      {claims.isPending && <LoadingState label="Loading claims" />}
-      {claims.isError && <ErrorState title="Claims unavailable" description="Your claims could not be loaded." onRetry={() => void claims.refetch()} />}
-      {claims.data && !claims.data.claims.length && <EmptyState icon={FileLock2} title="No claims yet" description="Start a claim from a potential match when you recognize an item that may be yours." />}
-      {claims.data && claims.data.claims.length > 0 && <div className="grid gap-4 md:grid-cols-2">{claims.data.claims.map((claim) => <Card className="p-5" key={claim.id}><div className="flex flex-wrap gap-2"><StatusBadge>{claim.status}</StatusBadge><Badge>{claim.id}</Badge></div><p className="mt-4 text-caption text-text-secondary">Match {claim.match_id}</p><p className="mt-2 text-label text-text-secondary">Updated {new Date(claim.updated_at).toLocaleString()}</p><Link to={`/claims/${encodeURIComponent(claim.id)}`} className={`${buttonVariants({ variant: 'secondary' })} mt-5`}>Open claim</Link></Card>)}</div>}
+      <PageHeader eyebrow="Ownership workflow" title="My claims" description="Review drafts, submitted evidence, staff decisions, and the next authorized action." visual={<PageArtwork icon={FileLock2} satellites={[SearchCheck, UserCheck]} />} />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
+          {claims.isPending && <LoadingState label="Loading claims" />}
+          {claims.isError && <ErrorState title="Claims unavailable" description="Your claims could not be loaded." onRetry={() => void claims.refetch()} />}
+          {claims.data && !claims.data.claims.length && <EmptyState icon={FileLock2} title="No claims yet" description="Start a claim from a potential match when you recognize an item that may be yours." />}
+          {claims.data && claims.data.claims.length > 0 && <div className="space-y-4">{claims.data.claims.map((claim) => <Card className="ui-transition p-5 hover:-translate-y-0.5 hover:shadow-floating md:p-6" key={claim.id}><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><StatusBadge>{claim.status}</StatusBadge><Badge>{claim.id}</Badge></div><p className="mt-4 truncate text-caption font-semibold text-text-primary">Match {claim.match_id}</p><p className="mt-1 text-label text-text-secondary">Updated {new Date(claim.updated_at).toLocaleString()}</p></div><Link to={`/claims/${encodeURIComponent(claim.id)}`} className={buttonVariants({ variant: 'secondary' })}>Open claim</Link></div></Card>)}</div>}
+        </div>
+        <aside className="space-y-4">
+          <Card className="p-5 md:p-6"><h2 className="text-card font-bold">How the claim process works</h2><ol className="mt-5 space-y-4">{verificationGuide.map(({ detail, title }, index) => <li key={title} className="grid grid-cols-[2.5rem_1fr] gap-3"><span className="flex size-10 items-center justify-center rounded-pill bg-brand-soft text-caption font-bold text-brand">{index + 1}</span><div><h3 className="text-caption font-semibold">{title}</h3><p className="mt-1 text-label leading-5 text-text-secondary">{detail}</p></div></li>)}</ol></Card>
+          <Notice title="Start from a match" tone="warning">A new claim can only begin from a potential match visible to your account.</Notice>
+        </aside>
+      </div>
     </PageContainer>
   )
 }
@@ -92,7 +101,7 @@ export function NewClaimPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="Ownership verification" title="Start a claim" description="Provide private evidence for authorized staff review. Match similarity is never treated as proof." />
+      <PageHeader eyebrow="Ownership verification" title="Start a claim" description="Provide private evidence for authorized staff review. Match similarity is never treated as proof." visual={<PageArtwork icon={ShieldCheck} satellites={[FileLock2, UserCheck]} />} />
       {!matchId ? <Notice title="Match reference required" tone="warning">Open a potential match and choose “Start private claim” before creating ownership evidence.</Notice> : <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Card className="p-5 md:p-7">
           {reviewValues ? <div><Badge variant="brand">Private draft review</Badge><h2 className="mt-4 text-section font-semibold">Review ownership evidence</h2><dl className="mt-6 divide-y divide-border text-caption"><div className="grid gap-1 py-4 sm:grid-cols-[12rem_1fr]"><dt className="font-semibold text-text-secondary">Match reference</dt><dd className="break-all">{matchId}</dd></div><div className="grid gap-1 py-4 sm:grid-cols-[12rem_1fr]"><dt className="font-semibold text-text-secondary">Ownership details</dt><dd className="whitespace-pre-wrap">{reviewValues.ownershipDetails}</dd></div><div className="grid gap-1 py-4 sm:grid-cols-[12rem_1fr]"><dt className="font-semibold text-text-secondary">Supporting image</dt><dd>{image ? image.name : 'Not provided'}</dd></div></dl><div className="mt-6 flex flex-wrap gap-3"><Button variant="secondary" onClick={() => setReviewValues(undefined)}>Edit evidence</Button><Button disabled={create.isPending} onClick={() => create.mutate(reviewValues)}>{create.isPending ? 'Creating draft…' : 'Create claim draft'}</Button></div>{create.isError && <div className="mt-5"><Notice announce title="Claim could not be created" tone="error">{apiErrorMessage(create.error, 'The claim workflow is temporarily unavailable.')}</Notice></div>}</div> : <form className="space-y-6" onSubmit={(event) => void handleSubmit(setReviewValues)(event)} noValidate><div><p className="text-caption font-semibold text-text-secondary">Potential-match reference</p><p className="mt-1 break-all text-caption">{matchId}</p></div><Textarea label="Private ownership details" required description="These details are sent only to the restricted claim workflow." placeholder="Describe details that an owner would reasonably know" error={errors.ownershipDetails?.message} {...register('ownershipDetails')} /><div><h2 className="text-card font-semibold">Supporting ownership image</h2><p className="mb-4 mt-2 text-caption text-text-secondary">Optional JPEG or PNG evidence is sanitized and stored separately from public report images.</p><FileUpload onChange={setImage} /></div><Button type="submit">Review claim</Button></form>}

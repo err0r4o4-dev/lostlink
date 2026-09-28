@@ -10,7 +10,8 @@ interface BrandMarkProps {
 export function BrandMark({ compact = false }: BrandMarkProps) {
   return (
     <Localize><Link to="/" className="group inline-flex min-h-11 items-center gap-3 rounded-control" aria-label="LostLink home">
-      <span className="ui-transition flex size-11 items-center justify-center rounded-control bg-brand text-on-brand shadow-card group-hover:bg-brand-hover">
+      <span className="ui-transition relative flex size-11 items-center justify-center overflow-hidden rounded-control bg-brand text-on-brand shadow-floating group-hover:bg-brand-hover">
+        <span aria-hidden="true" className="absolute inset-x-1 top-0 h-px bg-white/70" />
         <Paperclip aria-hidden="true" className="size-6" strokeWidth={2.25} />
       </span>
       {!compact && (

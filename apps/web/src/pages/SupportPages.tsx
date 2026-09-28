@@ -1,10 +1,11 @@
-import { Bell, CircleHelp, Clock3, FileCheck2, Map, MapPin, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { Bell, Box, CircleHelp, Clock3, FileCheck2, Info, Map, MapPin, Megaphone, PackageSearch, Search, Settings2, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { FormEvent, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button, Card, EmptyState, ErrorState, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
 import { NotificationItem } from '../components/notification-item'
+import { PageArtwork } from '../components/page-artwork'
 import { RouteCard } from '../components/route-card'
 import { TrackingTimeline } from '../components/tracking-timeline'
 import { apiErrorMessage } from '../api/error'
@@ -22,6 +23,22 @@ const processGuide = [
   ['Staff review and return', 'Authorized review, pickup, return, and closure complete the process.'],
 ]
 
+const coarseAreas = [
+  ['Main Library', 'Library area'],
+  ['Student Union', 'Student services area'],
+  ['Central Cafeteria', 'Dining area'],
+  ['Parking Area A', 'Transport area'],
+]
+
+function notificationIcon(type: string) {
+  const value = type.toLowerCase()
+  if (value.includes('match')) return Box
+  if (value.includes('claim')) return FileCheck2
+  if (value.includes('return') || value.includes('tracking')) return MapPin
+  if (value.includes('system')) return Megaphone
+  return Bell
+}
+
 export function TrackingPage() {
   const { request } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -32,10 +49,10 @@ export function TrackingPage() {
   function submit(event: FormEvent) { event.preventDefault(); setSearchParams(reference.trim() ? { reference: reference.trim() } : {}) }
   return (
     <PageContainer>
-      <PageHeader eyebrow="Your activity" title="Track a report, claim, or return" description="Load the authoritative timeline visible to the active account." />
+      <PageHeader eyebrow="Your activity" title="Track a report, claim, or return" description="Load the authoritative timeline visible to the active account." visual={<PageArtwork icon={Clock3} satellites={[PackageSearch, MapPin]} />} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
-          <Card className="p-5 md:p-6"><form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1"><Input label="Report or claim reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Enter an opaque reference" /></div><Button type="submit">Check status</Button></form></Card>
+          <Card elevated className="p-5 md:p-6"><form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1"><Input label="Report or claim reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Enter an opaque reference" /></div><Button type="submit">Check status</Button></form></Card>
           {!activeReference && <Card className="p-5 md:p-7"><h2 className="text-section font-semibold">Process guide</h2><ol className="mt-6 space-y-5">{processGuide.map(([title, detail], index) => <li className="grid grid-cols-[2.75rem_1fr] gap-4" key={title}><span className="flex size-11 items-center justify-center rounded-pill bg-brand-soft text-caption font-semibold text-brand">{index + 1}</span><div><h3 className="text-card font-semibold">{title}</h3><p className="mt-1 text-caption text-text-secondary">{detail}</p></div></li>)}</ol></Card>}
           {timeline.isPending && activeReference && <LoadingState label="Loading tracking timeline" />}
           {timeline.isError && <ErrorState title="Timeline unavailable" description="The reference was not found or is not visible to the active account." onRetry={() => void timeline.refetch()} />}
@@ -43,7 +60,7 @@ export function TrackingPage() {
           {returnDetails.isError && <ErrorState title="Pickup details unavailable" description="The private return arrangement could not be loaded." onRetry={() => void returnDetails.refetch()} />}
           {returnDetails.data && <Card className="p-5 md:p-7"><h2 className="text-card font-semibold">Private pickup arrangement</h2><dl className="mt-5 space-y-4 text-caption"><div><dt className="font-semibold text-text-secondary">Status</dt><dd className="mt-1">{returnDetails.data.return_arrangement.status}</dd></div><div><dt className="font-semibold text-text-secondary">Pickup time</dt><dd className="mt-1">{returnDetails.data.return_arrangement.pickup_at ? new Date(returnDetails.data.return_arrangement.pickup_at).toLocaleString() : 'Not scheduled'}</dd></div><div><dt className="font-semibold text-text-secondary">Pickup location</dt><dd className="mt-1">{returnDetails.data.return_arrangement.pickup_location ?? 'Not scheduled'}</dd></div></dl></Card>}
         </div>
-        <Notice title="Private workflow">Unknown or unauthorized references return a generic unavailable state to avoid exposing another user’s records.</Notice>
+        <aside className="space-y-4"><Notice title="Private workflow">Unknown or unauthorized references return a generic unavailable state to avoid exposing another user’s records.</Notice><Card className="p-5"><Info aria-hidden="true" className="size-6 text-brand" /><h2 className="mt-4 text-card font-bold">What you can track</h2><p className="mt-2 text-caption text-text-secondary">Use a report, claim, or return reference already visible to your account. Precise pickup information appears only for involved users.</p></Card></aside>
       </div>
     </PageContainer>
   )
@@ -56,7 +73,7 @@ export function NotificationsPage() {
   const markRead = useMutation({ mutationFn: (id: string) => markNotificationRead(request, id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }) })
   const markAll = useMutation({ mutationFn: () => markAllNotificationsRead(request), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }) })
   const unread = notifications.data?.notifications.filter((notification) => !notification.read_at).length ?? 0
-  return <PageContainer><PageHeader eyebrow="Updates" title="Notifications" description="Review authorized report, match, claim, and return updates in one place." actions={<Button variant="secondary" disabled={!unread || markAll.isPending} onClick={() => markAll.mutate()}>{markAll.isPending ? 'Marking…' : 'Mark all read'}</Button>} />{notifications.isPending && <LoadingState label="Loading notifications" />}{notifications.isError && <ErrorState title="Notifications unavailable" description="Notifications could not be loaded." onRetry={() => void notifications.refetch()} />}{notifications.data && !notifications.data.notifications.length && <EmptyState icon={Bell} title="No notifications" description="Workflow updates will appear here when reports, claims, or returns change state." />}{notifications.data && notifications.data.notifications.length > 0 && <div className="space-y-3">{notifications.data.notifications.map((notification) => <NotificationItem key={notification.id} title={notification.title} message={notification.message} timestamp={new Date(notification.created_at).toLocaleString()} read={Boolean(notification.read_at)} relatedPath={notification.related_path} onOpen={() => { if (!notification.read_at) markRead.mutate(notification.id) }} />)}</div>}{(markRead.isError || markAll.isError) && <div className="mt-5"><Notice announce title="Notification action failed" tone="error">{apiErrorMessage(markRead.error ?? markAll.error, 'The notification could not be updated.')}</Notice></div>}</PageContainer>
+  return <PageContainer><PageHeader eyebrow="Updates" title="Notifications" description="Review authorized report, match, claim, and return updates in one place." visual={<PageArtwork icon={Bell} satellites={[Megaphone, FileCheck2]} />} actions={<Button variant="secondary" disabled={!unread || markAll.isPending} onClick={() => markAll.mutate()}>{markAll.isPending ? 'Marking…' : 'Mark all read'}</Button>} /><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]"><div>{notifications.isPending && <LoadingState label="Loading notifications" />}{notifications.isError && <ErrorState title="Notifications unavailable" description="Notifications could not be loaded." onRetry={() => void notifications.refetch()} />}{notifications.data && !notifications.data.notifications.length && <EmptyState icon={Bell} title="No notifications" description="Workflow updates will appear here when reports, claims, or returns change state." />}{notifications.data && notifications.data.notifications.length > 0 && <div className="space-y-3">{notifications.data.notifications.map((notification) => <NotificationItem key={notification.id} icon={notificationIcon(notification.notification_type)} title={notification.title} message={notification.message} timestamp={new Date(notification.created_at).toLocaleString()} read={Boolean(notification.read_at)} relatedPath={notification.related_path} onOpen={() => { if (!notification.read_at) markRead.mutate(notification.id) }} />)}</div>}{(markRead.isError || markAll.isError) && <div className="mt-5"><Notice announce title="Notification action failed" tone="error">{apiErrorMessage(markRead.error ?? markAll.error, 'The notification could not be updated.')}</Notice></div>}</div><aside className="space-y-4"><Card className="p-5"><Settings2 aria-hidden="true" className="size-6 text-brand" /><h2 className="mt-4 text-card font-bold">Notification preferences</h2><p className="mt-2 text-caption text-text-secondary">Preference controls will appear after their purpose, defaults, and server contract are approved.</p><div className="mt-4"><IntegrationNotice capability="Persistent notification preferences" /></div></Card><Card className="p-5"><Info aria-hidden="true" className="size-6 text-info-strong" /><h2 className="mt-4 text-card font-bold">Stay informed</h2><p className="mt-2 text-caption text-text-secondary">Open related notifications to continue an authorized report, claim, match, or return workflow.</p></Card></aside></div></PageContainer>
 }
 
 export function ProfilePage() {
@@ -90,7 +107,7 @@ export function ProfilePage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." actions={<Button onClick={() => void signOut()} variant="secondary">Sign out</Button>} />
+      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." visual={<PageArtwork icon={UserRound} satellites={[Bell, ShieldCheck]} />} actions={<Button onClick={() => void signOut()} variant="secondary">Sign out</Button>} />
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2>{currentUser.isPending ? <div className="mt-4"><LoadingState label="Loading account" /></div> : <><p className="mt-2 break-all text-caption text-text-secondary">{profile?.identifier}</p><div className="mt-5"><StatusBadge>{profile?.role ?? 'user'}</StatusBadge></div></>}{currentUser.isError && <p className="mt-3 text-caption text-error-strong">The account could not be refreshed from the server.</p>}</Card>
         <Card className="p-5 md:p-6"><Bell aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Notification settings</h2><p className="mt-2 text-caption text-text-secondary">Preferences will appear only when their server-side purpose and defaults are approved.</p></Card>
@@ -113,10 +130,10 @@ const faqs = [
 export function HelpPage() {
   return (
     <PageContainer>
-      <PageHeader eyebrow="Help and safety" title="LostLink guide" description="Plain-language answers based on the approved architecture, privacy boundaries, and product lifecycle." />
+      <PageHeader eyebrow="Help and safety" title="LostLink guide" description="Plain-language answers based on the approved architecture, privacy boundaries, and product lifecycle." visual={<PageArtwork icon={CircleHelp} satellites={[ShieldCheck, Search]} />} />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-3">{faqs.map(([question, answer]) => <details key={question} className="group rounded-card border border-border bg-surface p-5 shadow-card"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-card font-semibold"><span>{question}</span><CircleHelp aria-hidden="true" className="ui-transition size-5 shrink-0 text-brand group-open:rotate-45" /></summary><p className="mt-3 text-caption text-text-secondary">{answer}</p></details>)}</div>
-        <aside className="space-y-4"><Notice title="Safety first" tone="warning">Do not publish contact details, private verification answers, receipts, serial secrets, or pickup arrangements.</Notice><Card className="p-5"><h2 className="text-card font-semibold">Need a workflow?</h2><p className="mt-2 text-caption text-text-secondary">Start from Search, Report, Matching, or Tracking in the main navigation.</p></Card></aside>
+        <div className="space-y-3">{faqs.map(([question, answer]) => <details key={question} className="group rounded-card border border-border bg-surface p-5 shadow-card open:shadow-floating"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 text-card font-semibold"><span>{question}</span><CircleHelp aria-hidden="true" className="ui-transition size-5 shrink-0 text-brand group-open:rotate-45" /></summary><p className="mt-3 border-t border-border pt-3 text-caption text-text-secondary">{answer}</p></details>)}</div>
+        <aside className="space-y-4"><Notice title="Safety first" tone="warning">Do not publish contact details, private verification answers, receipts, serial secrets, or pickup arrangements.</Notice><Card className="p-5"><h2 className="text-card font-bold">Help resources</h2><div className="mt-4 grid gap-3"><div className="rounded-control bg-surface-secondary p-4"><p className="text-caption font-semibold">Search and matching</p><p className="mt-1 text-label text-text-secondary">Use public-safe discovery before starting a private claim.</p></div><div className="rounded-control bg-surface-secondary p-4"><p className="text-caption font-semibold">Reports and tracking</p><p className="mt-1 text-label text-text-secondary">Follow authoritative status rather than arranging a private handoff yourself.</p></div></div></Card></aside>
       </div>
     </PageContainer>
   )
@@ -125,10 +142,10 @@ export function HelpPage() {
 export function LocationsPage() {
   return (
     <PageContainer>
-      <PageHeader eyebrow="Campus locations" title="Explore approximate areas" description="The location surface is ready for an approved provider or coarse-location API without simulating live map data." />
-      <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
-        <Card className="p-5 md:p-6"><div className="flex items-center gap-3"><Search aria-hidden="true" className="size-5 text-brand" /><h2 className="text-card font-semibold">Find an area</h2></div><div className="mt-5"><Input label="Campus area" placeholder="Search is unavailable" disabled /></div><div className="mt-5"><IntegrationNotice capability="Approved campus locations and map search" /></div></Card>
-        <Card className="flex min-h-96 flex-col items-center justify-center bg-surface-secondary p-6 text-center"><span className="flex size-14 items-center justify-center rounded-feature bg-surface text-brand shadow-card"><Map aria-hidden="true" className="size-7" /></span><h2 className="mt-5 text-section font-semibold">Map provider not configured</h2><p className="mt-2 max-w-lg text-caption text-text-secondary">No live pins, routes, coordinates, or provider behavior are being simulated.</p><span className="mt-5 inline-flex items-center gap-2 text-caption font-semibold text-brand"><MapPin aria-hidden="true" className="size-4" />Approximate locations only</span></Card>
+      <PageHeader eyebrow="Campus locations" title="Explore approximate areas" description="The location surface is ready for an approved provider or coarse-location API without simulating live map data." visual={<PageArtwork icon={MapPin} satellites={[Map, Search]} />} />
+      <div className="grid gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
+        <Card className="p-5 md:p-6"><div className="flex items-center gap-3"><Search aria-hidden="true" className="size-5 text-brand" /><h2 className="text-card font-bold">Find an area</h2></div><div className="mt-5"><Input label="Campus area" placeholder="Search is unavailable" disabled /></div><ul className="mt-5 space-y-2">{coarseAreas.map(([name, category]) => <li key={name} className="flex items-center gap-3 rounded-control border border-border bg-surface-secondary/70 p-3"><span className="flex size-9 items-center justify-center rounded-small bg-brand-soft text-brand"><MapPin aria-hidden="true" className="size-4" /></span><span><span className="block text-caption font-semibold">{name}</span><span className="block text-label text-text-secondary">{category}</span></span></li>)}</ul><div className="mt-5"><IntegrationNotice capability="Approved campus locations and map search" /></div></Card>
+        <Card className="overflow-hidden"><div className="map-atmosphere relative min-h-[28rem] p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-section font-bold">Campus map preview</h2><span className="inline-flex items-center gap-2 rounded-pill bg-surface/90 px-3 py-2 text-label font-semibold text-brand shadow-card"><MapPin aria-hidden="true" className="size-4" />Approximate locations only</span></div>{coarseAreas.map(([name], index) => <span key={name} className={`absolute inline-flex items-center gap-2 rounded-control border border-white/80 bg-surface/92 px-3 py-2 text-label font-semibold shadow-floating ${index === 0 ? 'left-[12%] top-[28%]' : index === 1 ? 'left-[42%] top-[48%]' : index === 2 ? 'right-[8%] top-[35%]' : 'bottom-[12%] left-[25%]'}`}><MapPin aria-hidden="true" className="size-4 text-brand" />{name}</span>)}</div><div className="border-t border-border p-5"><h3 className="text-card font-bold">Map provider not configured</h3><p className="mt-2 text-caption text-text-secondary">This abstract diagram shows broad synthetic campus zones only. No live pins, routes, coordinates, or provider behavior are being simulated.</p></div></Card>
       </div>
     </PageContainer>
   )

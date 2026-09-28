@@ -3,7 +3,7 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type Selec
 import { cn } from '../../lib/utils'
 
 const controlClassName =
-  'ui-transition min-h-12 w-full rounded-control border border-border bg-surface px-4 text-body text-text-primary shadow-card outline-none placeholder:text-text-secondary focus:border-brand disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-text-tertiary disabled:shadow-none'
+  'ui-transition min-h-12 w-full rounded-control border border-border bg-surface/95 px-4 text-body text-text-primary shadow-card outline-none placeholder:text-text-secondary focus:border-brand focus:bg-surface focus:shadow-floating disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-text-tertiary disabled:shadow-none'
 
 interface FieldShellProps {
   children: ReactNode

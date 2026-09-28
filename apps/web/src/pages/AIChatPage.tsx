@@ -324,10 +324,10 @@ export function AIChatPage() {
   }
 
   return (
-    <PageContainer>
-      <div className="flex h-[calc(100vh-8rem)] gap-4">
+    <PageContainer className="lg:h-[calc(100dvh-var(--layout-topbar))] lg:overflow-hidden lg:py-8">
+      <div className="flex h-[calc(100dvh-9rem)] min-h-[38rem] gap-4 lg:h-full lg:min-h-0">
         {/* Sidebar */}
-        <div className="hidden w-64 flex-col gap-4 md:flex">
+        <Card className="hidden w-64 shrink-0 flex-col gap-4 p-3 md:flex xl:w-72">
           <Button
             variant="primary"
             className="w-full justify-start"
@@ -337,8 +337,8 @@ export function AIChatPage() {
             {translate('New Chat')}
           </Button>
 
-          <div className="flex-1 overflow-y-auto pr-2">
-            <h3 className="mb-2 text-xs font-semibold uppercase text-text-secondary">
+          <div className="flex-1 overflow-y-auto px-1 pb-2">
+            <h3 className="mb-2 px-2 text-xs font-semibold uppercase tracking-label text-text-secondary">
               {translate('Recent Chats')}
             </h3>
             {isLoadingSessions ? (
@@ -351,9 +351,9 @@ export function AIChatPage() {
                   <button
                     key={session.id}
                     onClick={() => setActiveSessionId(session.id)}
-                    className={`group flex w-full items-center justify-between gap-2 rounded-md p-2 text-left text-sm transition-colors ${
+                    className={`group flex min-h-11 w-full items-center justify-between gap-2 rounded-control p-2 text-left text-sm transition-colors ${
                       activeSessionId === session.id
-                        ? 'bg-fill-ui font-medium text-text-primary'
+                        ? 'bg-brand-soft font-semibold text-brand'
                         : 'text-text-secondary hover:bg-fill-hover hover:text-text-primary'
                     }`}
                   >
@@ -384,10 +384,10 @@ export function AIChatPage() {
               </div>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Main Chat Area */}
-        <Card className="flex flex-1 flex-col overflow-hidden bg-surface">
+        <Card elevated className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface">
           {/* Chat Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-border-ui px-4 py-3 md:px-6">
             <div className="flex items-center gap-3">

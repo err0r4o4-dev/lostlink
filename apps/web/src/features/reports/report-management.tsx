@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 
 import { apiErrorMessage } from '../../api/error'
 import { FileUpload } from '../../components/file-upload'
+import { ItemArtwork } from '../../components/item-card'
 import { Badge, Button, Card, EmptyState, ErrorState, Input, LoadingState, Notice, StatusBadge, Textarea, buttonVariants } from '../../components/ui'
 import { showAlert } from '../../lib/alert'
 import { useAuth } from '../auth/auth-state'
@@ -62,26 +63,33 @@ export function OwnedReportsPanel() {
   if (!activeReports.length) return <EmptyState icon={PackageSearch} title="No reports yet" description="Create a lost or found report to begin the discovery workflow." />
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-4">
       {activeReports.map((report) => (
-        <Card key={report.id} className="p-5">
-          <div className="flex flex-wrap items-center gap-2"><StatusBadge tone={report.report_type === 'lost' ? 'brand' : 'info'}>{report.report_type}</StatusBadge><StatusBadge>{report.status}</StatusBadge></div>
-          <h3 className="mt-4 text-card font-semibold">{report.item_name}</h3>
-          <p className="mt-2 text-caption text-text-secondary">{report.category} · {report.approximate_location}</p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link to={`/reports/${encodeURIComponent(report.id)}/manage`} className={buttonVariants({ variant: 'secondary', size: 'compact' })}><Pencil aria-hidden="true" className="size-4" />Manage</Link>
-            {report.report_type === 'lost' && report.status === 'active' && <Link to={`/matches?report=${encodeURIComponent(report.id)}`} className={buttonVariants({ variant: 'ghost', size: 'compact' })}><SearchCheck aria-hidden="true" className="size-4" />Find matches</Link>}
-            {report.status === 'active' && (
-              <Button
-                variant="danger"
-                size="compact"
-                disabled={deleteMutation.isPending}
-                onClick={() => void handleDelete(report.id, report.item_name)}
-                aria-label={`Delete ${report.item_name}`}
-              >
-                <Trash2 aria-hidden="true" className="size-4" />Delete
-              </Button>
-            )}
+        <Card key={report.id} className="ui-transition overflow-hidden hover:-translate-y-0.5 hover:shadow-floating">
+          <div className="grid md:grid-cols-[10rem_minmax(0,1fr)]">
+            <ItemArtwork compact item={{ id: report.id, reportType: report.report_type, title: report.item_name, category: report.category }} />
+            <div className="flex flex-col justify-between gap-5 p-5 sm:flex-row sm:items-center">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><StatusBadge tone={report.report_type === 'lost' ? 'brand' : 'info'}>{report.report_type}</StatusBadge><StatusBadge>{report.status}</StatusBadge></div>
+                <h3 className="mt-3 text-card font-bold">{report.item_name}</h3>
+                <p className="mt-1 text-caption text-text-secondary">{report.category} · {report.approximate_location}</p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-52 sm:justify-end">
+                <Link to={`/reports/${encodeURIComponent(report.id)}/manage`} className={buttonVariants({ variant: 'secondary', size: 'compact' })}><Pencil aria-hidden="true" className="size-4" />Manage</Link>
+                {report.report_type === 'lost' && report.status === 'active' && <Link to={`/matches?report=${encodeURIComponent(report.id)}`} className={buttonVariants({ variant: 'ghost', size: 'compact' })}><SearchCheck aria-hidden="true" className="size-4" />Find matches</Link>}
+                {report.status === 'active' && (
+                  <Button
+                    variant="danger"
+                    size="compact"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => void handleDelete(report.id, report.item_name)}
+                    aria-label={`Delete ${report.item_name}`}
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />Delete
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
       ))}

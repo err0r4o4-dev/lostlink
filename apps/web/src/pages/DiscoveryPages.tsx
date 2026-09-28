@@ -1,10 +1,11 @@
-import { Filter, Image as ImageIcon, PackageSearch, Search, ShieldCheck, Sparkles } from 'lucide-react'
+import { Compass, Filter, Image as ImageIcon, PackageSearch, Search, ShieldCheck, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { FormEvent, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { RouteCard } from '../components/route-card'
-import { ItemCard } from '../components/item-card'
+import { ItemArtwork, ItemCard } from '../components/item-card'
+import { PageArtwork } from '../components/page-artwork'
 import { Badge, Button, Card, EmptyState, ErrorState, Input, LoadingState, Notice, PageContainer, PageHeader, SearchField, Select, StatusBadge, buttonVariants } from '../components/ui'
 import { apiErrorMessage } from '../api/error'
 import { useAuth } from '../features/auth/auth-state'
@@ -68,9 +69,9 @@ export function SearchPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="Discovery" title="Search LostLink" description="Search is designed around public-safe item attributes. Private ownership evidence never belongs in discovery results." />
+      <PageHeader eyebrow="Discovery" title="Search LostLink" description="Search is designed around public-safe item attributes. Private ownership evidence never belongs in discovery results." visual={<PageArtwork icon={Search} satellites={[PackageSearch, SlidersHorizontal]} />} />
       <form onSubmit={submitSearch} className="space-y-4" role="search">
-        <Card className="p-5 md:p-6">
+        <Card elevated className="p-5 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row">
             <div className="flex-1"><SearchField label="Search lost and found reports" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Item, category, or campus area" /></div>
             <Button type="submit"><Search aria-hidden="true" className="size-4" />Search</Button>
@@ -119,7 +120,7 @@ export function ItemDetailPage() {
   const images = useQuery({ queryKey: ['reports', itemId, 'images'], queryFn: () => listReportImages(itemId ?? ''), enabled: Boolean(itemId) })
   return (
     <PageContainer>
-      <PageHeader eyebrow="Item details" title={result.data?.report.item_name ?? 'Public report'} description="Only public-safe report attributes are shown. Private evidence and reporter identity are excluded." />
+      <PageHeader eyebrow="Item details" title={result.data?.report.item_name ?? 'Public report'} description="Only public-safe report attributes are shown. Private evidence and reporter identity are excluded." visual={<PageArtwork icon={PackageSearch} satellites={[ShieldCheck, ImageIcon]} />} />
       {result.isLoading && <LoadingState label="Loading report" />}
       {result.isError && <ErrorState title="Report unavailable" description="This report does not exist, was withdrawn, or could not be loaded." onRetry={() => void result.refetch()} />}
       {result.data && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(18rem,0.5fr)]">
@@ -160,14 +161,14 @@ export function MatchesPage() {
 
   return (
     <PageContainer>
-      <PageHeader eyebrow="AI-assisted discovery" title="Potential matches" description="Similarity can rank candidates for review. It cannot verify ownership or approve a claim." />
-      <Card className="p-5 md:p-6">
+      <PageHeader eyebrow="AI-assisted discovery" title="Potential matches" description="Similarity can rank candidates for review. It cannot verify ownership or approve a claim." visual={<PageArtwork icon={Sparkles} satellites={[Search, ShieldCheck]} />} />
+      <Card elevated className="p-5 md:p-6">
         {reports.isPending ? <LoadingState label="Loading lost reports" /> : reports.isError ? <ErrorState title="Reports unavailable" description="Your lost reports could not be loaded." onRetry={() => void reports.refetch()} /> : <div className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1"><Select label="Lost report" value={reportId} onChange={(event) => setSearchParams(event.target.value ? { report: event.target.value } : {})}><option value="">Choose a report</option>{lostReports.map((report) => <option key={report.id} value={report.id}>{report.item_name} · {report.approximate_location}</option>)}</Select></div><Button disabled={!reportId || matchingRun.isPending} onClick={() => matchingRun.mutate()}><Sparkles aria-hidden="true" className="size-4" />{matchingRun.isPending ? 'Matching…' : 'Run matching'}</Button></div>}
       </Card>
       {matchingRun.isError && <div className="mt-5"><Notice announce title="Matching failed" tone="error">{apiErrorMessage(matchingRun.error, 'Matching is temporarily unavailable.')}</Notice></div>}
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div>{!reportId ? <EmptyState icon={Sparkles} title="Choose a lost report" description="Select an active lost report to load or generate ranked candidates." /> : matches.isPending ? <LoadingState label="Loading potential matches" /> : matches.isError ? <ErrorState title="Matches unavailable" description="Potential matches could not be loaded." onRetry={() => void matches.refetch()} /> : !matches.data.matches.length ? <EmptyState icon={Sparkles} title="No potential matches yet" description="Run matching to compare this lost report with eligible found reports." /> : <div className="grid gap-5 sm:grid-cols-2">{matches.data.matches.map((match) => <div key={match.id} className="space-y-3"><ItemCard item={{ id: match.candidate.id, reportType: match.candidate.report_type, title: match.candidate.item_name, category: match.candidate.category, location: match.candidate.approximate_location, dateLabel: match.candidate.event_date, matchScore: match.score * 100 }} /><Link to={`/matches/${encodeURIComponent(match.id)}`} className={buttonVariants({ variant: 'secondary', className: 'w-full' })}>Review match</Link></div>)}</div>}</div>
-        <Notice title="How scores are used" tone="warning">A score estimates similarity only. Ownership requires private evidence and an authorized staff decision.</Notice>
+        <div>{!reportId ? <EmptyState icon={Sparkles} title="Choose a lost report" description="Select an active lost report to load or generate ranked candidates." /> : matches.isPending ? <LoadingState label="Loading potential matches" /> : matches.isError ? <ErrorState title="Matches unavailable" description="Potential matches could not be loaded." onRetry={() => void matches.refetch()} /> : !matches.data.matches.length ? <EmptyState icon={Sparkles} title="No potential matches yet" description="Run matching to compare this lost report with eligible found reports." /> : <div className="space-y-3">{matches.data.matches.map((match) => { const item = { id: match.candidate.id, reportType: match.candidate.report_type, title: match.candidate.item_name, category: match.candidate.category, location: match.candidate.approximate_location, dateLabel: match.candidate.event_date, matchScore: match.score * 100 }; return <Card key={match.id} className="ui-transition overflow-hidden hover:-translate-y-0.5 hover:shadow-floating"><div className="grid sm:grid-cols-[9rem_minmax(0,1fr)]"><ItemArtwork compact item={item} /><div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><StatusBadge tone="success">Match score {Math.round(match.score * 100)}%</StatusBadge><StatusBadge tone="info">{match.candidate.report_type}</StatusBadge></div><h2 className="mt-3 text-card font-bold">{match.candidate.item_name}</h2><p className="mt-1 text-caption text-text-secondary">{match.candidate.category} · {match.candidate.approximate_location}</p><p className="mt-1 text-label text-text-secondary">{match.candidate.event_date}</p></div><Link to={`/matches/${encodeURIComponent(match.id)}`} className={buttonVariants({ variant: 'secondary' })}>Review match</Link></div></div></Card> })}</div>}</div>
+        <aside className="space-y-4"><Notice title="How scores are used" tone="warning">A score estimates similarity only. Ownership requires private evidence and an authorized staff decision.</Notice><Card className="p-5"><h2 className="text-card font-bold">Tips for better matches</h2><ul className="mt-4 space-y-3 text-caption text-text-secondary"><li className="rounded-control bg-surface-secondary p-3">Add clear public-safe descriptions and visible details.</li><li className="rounded-control bg-surface-secondary p-3">Upload sanitized reference photos from useful angles.</li><li className="rounded-control bg-surface-secondary p-3">Keep the approximate time and area accurate.</li></ul></Card></aside>
       </div>
     </PageContainer>
   )
@@ -179,7 +180,7 @@ export function MatchDetailPage() {
   const result = useQuery({ queryKey: ['match', matchId], queryFn: () => getMatch(request, matchId ?? ''), enabled: Boolean(matchId) })
   return (
     <PageContainer>
-      <PageHeader eyebrow="Potential match comparison" title={result.data?.match.candidate.item_name ?? 'Review potential match'} description="Review public-safe candidate data and similarity signals before deciding whether to start a private claim." />
+      <PageHeader eyebrow="Potential match comparison" title={result.data?.match.candidate.item_name ?? 'Review potential match'} description="Review public-safe candidate data and similarity signals before deciding whether to start a private claim." visual={<PageArtwork icon={Sparkles} satellites={[Search, ShieldCheck]} />} />
       {result.isPending && <LoadingState label="Loading match" />}
       {result.isError && <ErrorState title="Match unavailable" description="This match is unavailable or you are not authorized to view it." onRetry={() => void result.refetch()} />}
       {result.data && <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"><Card className="p-5 md:p-7"><div className="flex flex-wrap gap-2"><StatusBadge tone="warning">{Math.round(result.data.match.score * 100)}% similar</StatusBadge><StatusBadge>{result.data.match.review_status}</StatusBadge></div><h2 className="mt-5 text-section font-semibold">{result.data.match.candidate.item_name}</h2><p className="mt-2 text-caption text-text-secondary">{result.data.match.candidate.public_description}</p><dl className="mt-6 grid gap-4 text-caption sm:grid-cols-2"><div><dt className="font-semibold text-text-secondary">Category</dt><dd className="mt-1">{result.data.match.candidate.category}</dd></div><div><dt className="font-semibold text-text-secondary">Approximate location</dt><dd className="mt-1">{result.data.match.candidate.approximate_location}</dd></div><div><dt className="font-semibold text-text-secondary">Event date</dt><dd className="mt-1">{result.data.match.candidate.event_date}</dd></div><div><dt className="font-semibold text-text-secondary">Source report</dt><dd className="mt-1 break-all">{result.data.match.source_report_id}</dd></div></dl><div className="mt-6"><p className="text-caption font-semibold text-text-secondary">Similarity signals</p><div className="mt-2 flex flex-wrap gap-2">{result.data.match.signals.map((signal) => <Badge key={signal}>{signal}</Badge>)}</div></div></Card><aside className="space-y-4"><Notice title="Ownership remains separate" tone="warning">This comparison cannot establish ownership. Private evidence and staff review are required.</Notice><Link to={`/claims/new?match=${encodeURIComponent(result.data.match.id)}`} className={buttonVariants({ variant: 'primary', className: 'w-full' })}>Start private claim</Link></aside></div>}
@@ -188,5 +189,5 @@ export function MatchDetailPage() {
 }
 
 export function DiscoveryHubPage() {
-  return <PageContainer><PageHeader eyebrow="Find what matters" title="Discovery tools" description="Move from public-safe search to potential-match review without crossing the ownership boundary." /><div className="grid gap-5 md:grid-cols-2"><RouteCard to="/search" icon={Search} title="Search reports" description="Filter active public-safe lost and found reports." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Run matching for your lost reports and review ranked candidates." /></div></PageContainer>
+  return <PageContainer><PageHeader eyebrow="Find what matters" title="Discovery tools" description="Move from public-safe search to potential-match review without crossing the ownership boundary." visual={<PageArtwork icon={Compass} satellites={[Search, Sparkles]} />} /><div className="grid gap-5 md:grid-cols-2"><RouteCard to="/search" icon={Search} title="Search reports" description="Filter active public-safe lost and found reports." /><RouteCard to="/matches" icon={Sparkles} title="Potential matches" description="Run matching for your lost reports and review ranked candidates." /></div><Card className="mt-5 grid gap-5 p-5 md:grid-cols-3 md:p-6"><div><p className="text-label font-bold uppercase tracking-label text-brand">01 · Discover</p><p className="mt-2 text-caption text-text-secondary">Search only public-safe item details and approximate areas.</p></div><div><p className="text-label font-bold uppercase tracking-label text-brand">02 · Compare</p><p className="mt-2 text-caption text-text-secondary">Review similarity as a ranked discovery signal, never a decision.</p></div><div><p className="text-label font-bold uppercase tracking-label text-brand">03 · Verify</p><p className="mt-2 text-caption text-text-secondary">Move private ownership evidence into the protected claim workflow.</p></div></Card></PageContainer>
 }

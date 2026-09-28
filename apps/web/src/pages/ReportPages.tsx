@@ -1,7 +1,8 @@
-import { Box, PackageSearch } from 'lucide-react'
+import { Box, FileCheck2, PackageSearch } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 
 import { RouteCard } from '../components/route-card'
+import { PageArtwork } from '../components/page-artwork'
 import { PageContainer, PageHeader } from '../components/ui'
 import { ReportForm } from '../features/reports/report-form'
 import { ManageReport, OwnedReportsPanel } from '../features/reports/report-management'
@@ -9,7 +10,7 @@ import { ManageReport, OwnedReportsPanel } from '../features/reports/report-mana
 export function ReportHubPage() {
   return (
     <PageContainer>
-      <PageHeader eyebrow="Report an item" title="What happened?" description="Choose the report that matches your situation. Details are reviewed before any public or ownership workflow can proceed." />
+      <PageHeader eyebrow="Report an item" title="What happened?" description="Choose the report that matches your situation. Details are reviewed before any public or ownership workflow can proceed." visual={<PageArtwork icon={Box} satellites={[PackageSearch, FileCheck2]} />} />
       <div className="grid gap-5 md:grid-cols-2">
         <RouteCard to="/report/lost" icon={PackageSearch} title="I lost something" description="Create a public-safe description and keep identifying evidence private for later verification." />
         <RouteCard to="/report/found" icon={Box} title="I found something" description="Record where and when it was found without exposing private handoff or contact details." />
@@ -20,14 +21,14 @@ export function ReportHubPage() {
 }
 
 export function ReportLostPage() {
-  return <PageContainer><PageHeader eyebrow="Lost report" title="Report a lost item" description="Create a structured draft, preview an image, and review every detail before submission." /><ReportForm reportType="lost" /></PageContainer>
+  return <PageContainer><PageHeader eyebrow="Lost report" title="Report a lost item" description="Create a structured draft, preview an image, and review every detail before submission." visual={<PageArtwork icon={PackageSearch} satellites={[FileCheck2]} />} /><ReportForm reportType="lost" /></PageContainer>
 }
 
 export function ReportFoundPage() {
-  return <PageContainer><PageHeader eyebrow="Found report" title="Report a found item" description="Share enough public-safe information to support discovery while preserving a safe return process." /><ReportForm reportType="found" /></PageContainer>
+  return <PageContainer><PageHeader eyebrow="Found report" title="Report a found item" description="Share enough public-safe information to support discovery while preserving a safe return process." visual={<PageArtwork icon={Box} satellites={[FileCheck2]} />} /><ReportForm reportType="found" /></PageContainer>
 }
 
 export function ManageReportPage() {
   const { reportId } = useParams()
-  return <PageContainer><PageHeader eyebrow="Report lifecycle" title="Manage report" description="Edit public-safe details, manage sanitized images, withdraw the report, or continue to matching." />{reportId && <ManageReport reportId={reportId} />}</PageContainer>
+  return <PageContainer><PageHeader eyebrow="Report lifecycle" title="Manage report" description="Edit public-safe details, manage sanitized images, withdraw the report, or continue to matching." visual={<PageArtwork icon={FileCheck2} satellites={[PackageSearch, Box]} />} />{reportId && <ManageReport reportId={reportId} />}</PageContainer>
 }
