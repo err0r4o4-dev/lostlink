@@ -5,6 +5,7 @@ import {
   Clock3,
   Compass,
   FileCheck2,
+  LayoutGrid,
   LogOut,
   MapPin,
   MessageSquare,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   UserRound,
   UsersRound,
+  X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -43,36 +45,61 @@ const desktopNavigation: NavigationItem[] = [
   { to: '/staff', icon: UsersRound, label: 'Staff preview' },
 ]
 
-const tabletNavigation = [
-  desktopNavigation[0],
+const compactNavigation: NavigationItem[] = [
+  { ...desktopNavigation[0], label: 'Explore' },
   desktopNavigation[1],
-  desktopNavigation[2], // AI Chat
-  desktopNavigation[3],
+  desktopNavigation[2],
+  desktopNavigation[6],
 ]
-const mobileNavigation: NavigationItem[] = [
-  desktopNavigation[0],
-  desktopNavigation[1],
-  desktopNavigation[2], // AI Chat
-  desktopNavigation[6], // Tracking (was index 5 before AI Chat, now index 6)
+
+const menuNavigation: NavigationItem[] = [
+  { ...desktopNavigation[0], label: 'Explore' },
+  ...desktopNavigation.slice(1),
   { to: '/profile', icon: UserRound, label: 'Profile' },
 ]
 
-function NavigationLinks({ compact = false, items = desktopNavigation }: { compact?: boolean; items?: NavigationItem[] }) {
+function NavigationLinks({ items = desktopNavigation }: { items?: NavigationItem[] }) {
   return <Localize>{items.map(({ to, icon: Icon, label }) => (
     <NavLink
       key={to}
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `${compact
-          ? 'ui-transition flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-control px-2 text-label font-semibold'
-          : 'ui-transition flex min-h-11 items-center gap-3 rounded-control px-4 text-caption font-semibold'} ${isActive ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`
+        `ui-transition flex min-h-11 items-center gap-3 rounded-control px-4 text-caption font-semibold ${isActive ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`
       }
     >
       <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
       <span>{label}</span>
     </NavLink>
   ))}</Localize>
+}
+
+function useSignOut() {
+  const { logout } = useAuth()
+  const { translate } = useLanguage()
+  const navigate = useNavigate()
+
+  return async function signOut() {
+    const confirmed = await showAlert.confirm(
+      translate('Sign out?'),
+      translate('You will need to sign in again to access private LostLink features.'),
+      translate('Sign out'),
+      translate('Stay signed in'),
+    )
+    if (!confirmed) return
+
+    try {
+      await logout()
+      await showAlert.success(translate('Signed out'), translate('Your LostLink session has ended.'))
+    } catch {
+      await showAlert.error(
+        translate('Sign-out incomplete'),
+        translate('The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.'),
+      )
+    } finally {
+      void navigate('/login', { replace: true })
+    }
+  }
 }
 
 function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
@@ -83,9 +110,7 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const { logout } = useAuth()
-  const { translate } = useLanguage()
-  const navigate = useNavigate()
+  const signOut = useSignOut()
 
   useEffect(() => {
     if (!open) return
@@ -108,29 +133,6 @@ export function AccountMenu() {
     }
   }, [open])
 
-  async function signOut() {
-    setOpen(false)
-    const confirmed = await showAlert.confirm(
-      translate('Sign out?'),
-      translate('You will need to sign in again to access private LostLink features.'),
-      translate('Sign out'),
-      translate('Stay signed in'),
-    )
-    if (!confirmed) return
-
-    try {
-      await logout()
-      await showAlert.success(translate('Signed out'), translate('Your LostLink session has ended.'))
-    } catch {
-      await showAlert.error(
-        translate('Sign-out incomplete'),
-        translate('The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.'),
-      )
-    } finally {
-      void navigate('/login', { replace: true })
-    }
-  }
-
   return (
     <Localize><div ref={menuRef} className="relative">
       <button
@@ -151,13 +153,144 @@ export function AccountMenu() {
             <Link to="/profile" onClick={() => setOpen(false)} className="ui-transition flex min-h-11 items-center gap-3 rounded-control px-3 text-caption font-semibold text-text-primary hover:bg-brand-soft hover:text-brand">
               <UserRound aria-hidden="true" className="size-4" />Profile
             </Link>
-            <button type="button" onClick={() => void signOut()} className="ui-transition flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-caption font-semibold text-error-strong hover:bg-error/10">
+            <button type="button" onClick={() => { setOpen(false); void signOut() }} className="ui-transition flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-caption font-semibold text-error-strong hover:bg-error/10">
               <LogOut aria-hidden="true" className="size-4" />Sign out
             </button>
           </div>
         </div>
       )}
     </div></Localize>
+  )
+}
+
+export function MobileNavigation() {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const signOut = useSignOut()
+
+  function closeMenu(returnFocus = true) {
+    setOpen(false)
+    if (returnFocus) window.requestAnimationFrame(() => triggerRef.current?.focus())
+  }
+
+  useEffect(() => {
+    if (!open) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+        window.requestAnimationFrame(() => triggerRef.current?.focus())
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const focusable = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (!first || !last) return
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  return (
+    <Localize>
+      {open && (
+        <div key="mobile-menu-overlay" className="fixed inset-0 z-overlay lg:hidden">
+          <button type="button" tabIndex={-1} aria-label="Dismiss menu" onClick={() => closeMenu()} className="absolute inset-0 cursor-default bg-text-primary/20 backdrop-blur-[2px]" />
+          <GlassSurface
+            ref={panelRef}
+            id="mobile-navigation-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
+            className="safe-area-bottom absolute inset-x-3 bottom-[calc(var(--layout-mobile-nav)+env(safe-area-inset-bottom)+1rem)] max-h-[calc(100dvh-var(--layout-mobile-nav)-env(safe-area-inset-bottom)-2.5rem)] overflow-y-auto rounded-overlay bg-surface/95 p-4 shadow-floating md:left-1/2 md:right-auto md:w-[calc(100%-3rem)] md:max-w-2xl md:-translate-x-1/2 md:p-5"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-label font-bold uppercase tracking-label text-brand">All destinations</p>
+                <h2 id="mobile-menu-title" className="mt-1 text-card font-bold text-text-primary">Menu</h2>
+              </div>
+              <button
+                ref={closeRef}
+                type="button"
+                aria-label="Close menu"
+                onClick={() => closeMenu()}
+                className="ui-transition flex size-11 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"
+              >
+                <X aria-hidden="true" className="size-5" />
+              </button>
+            </div>
+            <nav aria-label="All destinations" className="mt-4 grid grid-cols-3 gap-2 md:gap-3">
+              {menuNavigation.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setOpen(false)}
+                  className={({ isActive }) => `pressable ui-transition flex min-h-20 flex-col items-center justify-center gap-2 rounded-card border px-2 py-3 text-center text-label font-semibold ${isActive ? 'border-brand/20 bg-brand-soft text-brand' : 'border-border bg-surface text-text-secondary hover:border-brand/20 hover:bg-brand-soft hover:text-brand'}`}
+                >
+                  <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); void signOut() }}
+              className="ui-transition mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-4 font-semibold text-error-strong hover:bg-error/10"
+            >
+              <LogOut aria-hidden="true" className="size-4" />Sign out
+            </button>
+          </GlassSurface>
+        </div>
+      )}
+      <GlassSurface key="mobile-primary-navigation" className={`safe-area-bottom fixed bottom-2 left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-feature shadow-floating lg:hidden md:max-w-2xl ${open ? 'z-dialog' : 'z-navigation'}`}>
+        <nav aria-label="Mobile primary" className="flex min-h-(--layout-mobile-nav) items-center px-2">
+          {compactNavigation.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => `ui-transition flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 text-label font-semibold ${isActive ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
+            >
+              <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
+              <span className="max-w-full truncate">{label}</span>
+            </NavLink>
+          ))}
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            aria-controls="mobile-navigation-menu"
+            onClick={() => setOpen((current) => !current)}
+            className={`ui-transition flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 text-label font-semibold ${open ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
+          >
+            <LayoutGrid aria-hidden="true" className="size-5" strokeWidth={2} />
+            <span>Menu</span>
+          </button>
+        </nav>
+      </GlassSurface>
+    </Localize>
   )
 }
 
@@ -204,20 +337,17 @@ export function AppShell() {
             <header className="mx-auto flex h-full max-w-content items-center justify-between px-5 md:px-7 lg:px-8 xl:px-10">
               <div className="lg:hidden"><BrandMark compact /></div>
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
-              <nav aria-label="Primary" className="hidden items-center gap-1 md:flex lg:hidden"><NavigationLinks compact items={tabletNavigation} /></nav>
               <div className="flex items-center gap-1">
                 <LanguageToggle />
                 <div className="hidden md:block"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /></div>
-                <AccountMenu />
+                <div className="hidden lg:block"><AccountMenu /></div>
               </div>
             </header>
           </GlassSurface>
           <Outlet />
         </div>
       </div>
-      <GlassSurface className="safe-area-bottom fixed inset-x-3 bottom-2 z-navigation rounded-feature shadow-floating md:hidden">
-        <nav aria-label="Mobile primary" className="flex min-h-(--layout-mobile-nav) items-center px-2"><NavigationLinks compact items={mobileNavigation} /></nav>
-      </GlassSurface>
+      <MobileNavigation />
     </div></Localize>
   )
 }

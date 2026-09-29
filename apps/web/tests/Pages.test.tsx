@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, matchRoutes, useLocation } from 'react-router-dom'
@@ -21,7 +21,7 @@ import { SearchPage } from '../src/pages/DiscoveryPages'
 import { NewClaimPage } from '../src/pages/ClaimPages'
 import { ReportHubPage, ReportLostPage } from '../src/pages/ReportPages'
 import { StaffClaimDetailPage } from '../src/pages/StaffPages'
-import { AccountMenu } from '../src/layouts/AppShell'
+import { AccountMenu, MobileNavigation } from '../src/layouts/AppShell'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
 import { LanguageProvider } from '../src/i18n/language'
@@ -379,6 +379,34 @@ describe('frontend completion routes', () => {
       'Sign-out incomplete',
       'The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.',
     ))
+  })
+
+  it('opens the complete compact navigation and returns focus when dismissed', async () => {
+    const user = userEvent.setup()
+    renderWithQuery(<AuthContext.Provider value={authenticatedContext}><MemoryRouter initialEntries={['/discover']}><MobileNavigation /></MemoryRouter></AuthContext.Provider>)
+
+    const primaryNavigation = screen.getByRole('navigation', { name: 'Mobile primary' })
+    expect(within(primaryNavigation).getAllByRole('link')).toHaveLength(4)
+    expect(within(primaryNavigation).getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/discover')
+    expect(within(primaryNavigation).getByRole('link', { name: 'Tracking' })).toHaveAttribute('href', '/tracking')
+
+    const menuTrigger = within(primaryNavigation).getByRole('button', { name: 'Menu' })
+    await user.click(menuTrigger)
+
+    const menu = screen.getByRole('dialog', { name: 'Menu' })
+    const destinations = within(menu).getByRole('navigation', { name: 'All destinations' })
+    expect(within(destinations).getAllByRole('link')).toHaveLength(11)
+    for (const label of ['Explore', 'Search', 'AI Chat', 'Report', 'Matches', 'Claims', 'Tracking', 'Locations', 'Help', 'Staff preview', 'Profile']) {
+      expect(within(destinations).getByRole('link', { name: label })).toBeInTheDocument()
+    }
+    expect(screen.getByRole('button', { name: 'Close menu' })).toHaveFocus()
+    expect(document.body.style.overflow).toBe('hidden')
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(menuTrigger).toHaveFocus())
+    expect(screen.queryByRole('dialog', { name: 'Menu' })).not.toBeInTheDocument()
+    expect(document.body.style.overflow).toBe('')
   })
 
   it('shows a generic Google callback failure without exposing provider details', () => {

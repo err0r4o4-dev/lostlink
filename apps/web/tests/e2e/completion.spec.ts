@@ -191,6 +191,53 @@ test('moves focus to main content after client-side navigation', async ({ page }
   await expect(page.getByRole('main')).toBeFocused()
 })
 
+test('uses compact navigation on mobile and tablet while keeping desktop account controls', async ({ page }) => {
+  await mockAuthenticatedSession(page)
+
+  for (const width of [390, 768]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/discover')
+
+    const compactNavigation = page.getByRole('navigation', { name: 'Mobile primary' })
+    await expect(compactNavigation).toBeVisible()
+    await expect(compactNavigation.getByRole('link', { name: 'Explore' })).toBeVisible()
+    await expect(compactNavigation.getByRole('link', { name: 'Tracking' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Primary', exact: true })).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Profile' })).toBeHidden()
+
+    const navigationBox = await compactNavigation.boundingBox()
+    expect(navigationBox).not.toBeNull()
+    expect(Math.abs(((navigationBox?.x ?? 0) + (navigationBox?.width ?? 0) / 2) - width / 2)).toBeLessThanOrEqual(2)
+
+    const menuTrigger = compactNavigation.getByRole('button', { name: 'Menu' })
+    await menuTrigger.click()
+    const menu = page.getByRole('dialog', { name: 'Menu' })
+    await expect(menu).toBeVisible()
+    await expect(menu.getByRole('navigation', { name: 'All destinations' }).getByRole('link')).toHaveCount(11)
+    await expect(menu.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(menu).toHaveCount(0)
+    await expect(menuTrigger).toBeFocused()
+  }
+
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/discover')
+  await page.getByRole('button', { name: 'เปลี่ยนภาษาเป็นไทย' }).click()
+  const thaiNavigation = page.getByRole('navigation', { name: 'เมนูหลักบนมือถือ' })
+  await thaiNavigation.getByRole('button', { name: 'เมนู' }).click()
+  await expect(page.getByRole('dialog', { name: 'เมนู' })).toBeVisible()
+  const thaiDimensions = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }))
+  expect(thaiDimensions.scrollWidth).toBeLessThanOrEqual(thaiDimensions.clientWidth)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Switch language to English' }).click()
+
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/discover')
+  await expect(page.getByRole('navigation', { name: 'Primary', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Profile' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Mobile primary' })).toBeHidden()
+})
+
 test('switches between Thai and English next to the notification action', async ({ page }) => {
   await mockAuthenticatedSession(page)
   await page.setViewportSize({ width: 1280, height: 800 })
