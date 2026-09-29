@@ -1,9 +1,11 @@
 import {
   Bell,
+  ChevronDown,
   CircleHelp,
   Clock3,
   Compass,
   FileCheck2,
+  LogOut,
   MapPin,
   MessageSquare,
   PackagePlus,
@@ -13,11 +15,14 @@ import {
   UsersRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 
 import { BrandMark } from '../components/brand-mark'
-import { Badge, GlassSurface } from '../components/ui'
+import { GlassSurface } from '../components/ui'
+import { useAuth } from '../features/auth/auth-state'
 import { Localize, useLanguage } from '../i18n/language'
+import { showAlert } from '../lib/alert'
 
 interface NavigationItem {
   icon: LucideIcon
@@ -74,6 +79,88 @@ function HeaderAction({ icon: Icon, label, to }: NavigationItem) {
   return <Localize><Link to={to} aria-label={label} className="ui-transition flex size-11 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"><Icon aria-hidden="true" className="size-5" /></Link></Localize>
 }
 
+export function AccountMenu() {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const { logout } = useAuth()
+  const { translate } = useLanguage()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!open) return
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  async function signOut() {
+    setOpen(false)
+    const confirmed = await showAlert.confirm(
+      translate('Sign out?'),
+      translate('You will need to sign in again to access private LostLink features.'),
+      translate('Sign out'),
+      translate('Stay signed in'),
+    )
+    if (!confirmed) return
+
+    try {
+      await logout()
+      await showAlert.success(translate('Signed out'), translate('Your LostLink session has ended.'))
+    } catch {
+      await showAlert.error(
+        translate('Sign-out incomplete'),
+        translate('The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.'),
+      )
+    } finally {
+      void navigate('/login', { replace: true })
+    }
+  }
+
+  return (
+    <Localize><div ref={menuRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="Profile"
+        aria-expanded={open}
+        aria-controls="account-dropdown"
+        onClick={() => setOpen((current) => !current)}
+        className="ui-transition flex min-h-11 items-center justify-center gap-1 rounded-control px-2 text-text-secondary hover:bg-brand-soft hover:text-brand"
+      >
+        <UserRound aria-hidden="true" className="size-5" />
+        <ChevronDown aria-hidden="true" className={`ui-transition size-3.5 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div id="account-dropdown" className="absolute right-0 top-[calc(100%+0.5rem)] z-overlay w-64 rounded-card border border-border bg-surface p-2 shadow-floating">
+          <div className="grid gap-1">
+            <Link to="/profile" onClick={() => setOpen(false)} className="ui-transition flex min-h-11 items-center gap-3 rounded-control px-3 text-caption font-semibold text-text-primary hover:bg-brand-soft hover:text-brand">
+              <UserRound aria-hidden="true" className="size-4" />Profile
+            </Link>
+            <button type="button" onClick={() => void signOut()} className="ui-transition flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-caption font-semibold text-error-strong hover:bg-error/10">
+              <LogOut aria-hidden="true" className="size-4" />Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div></Localize>
+  )
+}
+
 export function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage()
   const label = language === 'en' ? 'เปลี่ยนภาษาเป็นไทย' : 'Switch language to English'
@@ -119,8 +206,9 @@ export function AppShell() {
               <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
               <nav aria-label="Primary" className="hidden items-center gap-1 md:flex lg:hidden"><NavigationLinks compact items={tabletNavigation} /></nav>
               <div className="flex items-center gap-1">
-                <div className="hidden items-center gap-1 md:flex"><LanguageToggle /><HeaderAction to="/notifications" icon={Bell} label="Notifications" /><HeaderAction to="/profile" icon={UserRound} label="Profile" /></div>
-                <div className="flex items-center gap-1 md:hidden"><LanguageToggle /><Badge>Preview</Badge></div>
+                <LanguageToggle />
+                <div className="hidden md:block"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /></div>
+                <AccountMenu />
               </div>
             </header>
           </GlassSurface>

@@ -1,6 +1,6 @@
 import { Bell, Box, CircleHelp, Clock3, FileCheck2, Info, Map, MapPin, Megaphone, PackageSearch, Search, Settings2, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { FormEvent, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button, Card, EmptyState, ErrorState, Input, IntegrationNotice, LoadingState, Notice, PageContainer, PageHeader, StatusBadge } from '../components/ui'
@@ -13,8 +13,6 @@ import { useAuth } from '../features/auth/auth-state'
 import { getCurrentUser } from '../features/auth/auth-api'
 import { listNotifications, markAllNotificationsRead, markNotificationRead } from '../features/notifications/notification-api'
 import { getReturnArrangement, getTrackingTimeline } from '../features/tracking/tracking-api'
-import { useLanguage } from '../i18n/language'
-import { showAlert } from '../lib/alert'
 
 const processGuide = [
   ['Report submitted', 'The Go API creates and validates an authoritative report record.'],
@@ -77,37 +75,13 @@ export function NotificationsPage() {
 }
 
 export function ProfilePage() {
-  const { logout, request, user } = useAuth()
-  const { translate } = useLanguage()
-  const navigate = useNavigate()
+  const { request, user } = useAuth()
   const currentUser = useQuery({ queryKey: ['auth', 'me'], queryFn: () => getCurrentUser(request) })
   const profile = currentUser.data?.user ?? user
 
-  async function signOut() {
-    const confirmed = await showAlert.confirm(
-      translate('Sign out?'),
-      translate('You will need to sign in again to access private LostLink features.'),
-      translate('Sign out'),
-      translate('Stay signed in'),
-    )
-    if (!confirmed) return
-
-    try {
-      await logout()
-      await showAlert.success(translate('Signed out'), translate('Your LostLink session has ended.'))
-    } catch {
-      await showAlert.error(
-        translate('Sign-out incomplete'),
-        translate('The local session was cleared, but the server could not confirm logout. Close the browser if this is a shared device.'),
-      )
-    } finally {
-      void navigate('/login', { replace: true })
-    }
-  }
-
   return (
     <PageContainer>
-      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." visual={<PageArtwork icon={UserRound} satellites={[Bell, ShieldCheck]} />} actions={<Button onClick={() => void signOut()} variant="secondary">Sign out</Button>} />
+      <PageHeader eyebrow="Account" title="Profile and preferences" description="Review the public-safe identity attached to your active LostLink session." visual={<PageArtwork icon={UserRound} satellites={[Bell, ShieldCheck]} />} />
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-5 md:p-6"><UserRound aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Account identity</h2>{currentUser.isPending ? <div className="mt-4"><LoadingState label="Loading account" /></div> : <><p className="mt-2 break-all text-caption text-text-secondary">{profile?.identifier}</p><div className="mt-5"><StatusBadge>{profile?.role ?? 'user'}</StatusBadge></div></>}{currentUser.isError && <p className="mt-3 text-caption text-error-strong">The account could not be refreshed from the server.</p>}</Card>
         <Card className="p-5 md:p-6"><Bell aria-hidden="true" className="size-8 text-brand" /><h2 className="mt-5 text-card font-semibold">Notification settings</h2><p className="mt-2 text-caption text-text-secondary">Preferences will appear only when their server-side purpose and defaults are approved.</p></Card>

@@ -21,7 +21,7 @@ import { SearchPage } from '../src/pages/DiscoveryPages'
 import { NewClaimPage } from '../src/pages/ClaimPages'
 import { ReportHubPage, ReportLostPage } from '../src/pages/ReportPages'
 import { StaffClaimDetailPage } from '../src/pages/StaffPages'
-import { ProfilePage } from '../src/pages/SupportPages'
+import { AccountMenu } from '../src/layouts/AppShell'
 import { router } from '../src/routes/router'
 import { FileUpload } from '../src/components/file-upload'
 import { LanguageProvider } from '../src/i18n/language'
@@ -337,8 +337,9 @@ describe('frontend completion routes', () => {
   it('requires confirmation before signing out and reports completion', async () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockResolvedValue(undefined)
-    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><AccountMenu /></MemoryRouter></AuthContext.Provider>)
 
+    await user.click(screen.getByRole('button', { name: 'Profile' }))
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
     await waitFor(() => {
@@ -357,8 +358,9 @@ describe('frontend completion routes', () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockResolvedValue(undefined)
     alertMocks.confirm.mockResolvedValueOnce(false)
-    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><AccountMenu /></MemoryRouter></AuthContext.Provider>)
 
+    await user.click(screen.getByRole('button', { name: 'Profile' }))
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
     expect(logout).not.toHaveBeenCalled()
@@ -368,8 +370,9 @@ describe('frontend completion routes', () => {
   it('warns when server-side logout cannot be confirmed', async () => {
     const user = userEvent.setup()
     const logout = vi.fn().mockRejectedValue(new Error('network unavailable'))
-    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><ProfilePage /></MemoryRouter></AuthContext.Provider>)
+    renderWithQuery(<AuthContext.Provider value={{ ...authenticatedContext, logout }}><MemoryRouter><AccountMenu /></MemoryRouter></AuthContext.Provider>)
 
+    await user.click(screen.getByRole('button', { name: 'Profile' }))
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
 
     await waitFor(() => expect(alertMocks.error).toHaveBeenCalledWith(

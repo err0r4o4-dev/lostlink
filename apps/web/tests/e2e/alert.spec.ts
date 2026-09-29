@@ -23,6 +23,7 @@ async function mockAuthenticatedSession(page: Page) {
 test('renders success feedback without an opaque animation mask', async ({ page }) => {
   await mockAuthenticatedSession(page)
   await page.goto('/profile')
+  await page.getByRole('button', { name: 'Profile' }).click()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await page.getByRole('dialog', { name: 'Sign out?' }).getByRole('button', { name: 'Sign out' }).click()
 
