@@ -194,7 +194,7 @@ test('moves focus to main content after client-side navigation', async ({ page }
 test('uses compact navigation on mobile and tablet while keeping desktop account controls', async ({ page }) => {
   await mockAuthenticatedSession(page)
 
-  for (const width of [390, 768]) {
+  for (const width of [390, 768, 1023]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/discover')
 
@@ -215,6 +215,23 @@ test('uses compact navigation on mobile and tablet while keeping desktop account
     await expect(menu).toBeVisible()
     const menuDestinations = menu.getByRole('navigation', { name: 'All destinations' })
     await expect(menuDestinations.getByRole('link')).toHaveCount(7)
+    const firstDestinationBox = await menuDestinations.getByRole('link').nth(0).boundingBox()
+    const secondDestinationBox = await menuDestinations.getByRole('link').nth(1).boundingBox()
+    const thirdDestinationBox = await menuDestinations.getByRole('link').nth(2).boundingBox()
+    expect(firstDestinationBox).not.toBeNull()
+    expect(secondDestinationBox).not.toBeNull()
+    expect(thirdDestinationBox).not.toBeNull()
+    if (width === 390) {
+      expect(Math.abs((firstDestinationBox?.x ?? 0) - (secondDestinationBox?.x ?? 0))).toBeLessThanOrEqual(2)
+      expect(secondDestinationBox?.y ?? 0).toBeGreaterThan((firstDestinationBox?.y ?? 0) + (firstDestinationBox?.height ?? 0))
+    } else if (width === 768) {
+      expect(Math.abs((firstDestinationBox?.y ?? 0) - (secondDestinationBox?.y ?? 0))).toBeLessThanOrEqual(2)
+      expect(Math.abs((firstDestinationBox?.x ?? 0) - (thirdDestinationBox?.x ?? 0))).toBeLessThanOrEqual(2)
+      expect(thirdDestinationBox?.y ?? 0).toBeGreaterThan((firstDestinationBox?.y ?? 0) + (firstDestinationBox?.height ?? 0))
+    } else {
+      expect(Math.abs((firstDestinationBox?.y ?? 0) - (secondDestinationBox?.y ?? 0))).toBeLessThanOrEqual(2)
+      expect(Math.abs((firstDestinationBox?.y ?? 0) - (thirdDestinationBox?.y ?? 0))).toBeLessThanOrEqual(2)
+    }
     for (const label of ['Explore', 'Search', 'AI Chat', 'Tracking']) {
       await expect(menuDestinations.getByRole('link', { name: label })).toHaveCount(0)
     }

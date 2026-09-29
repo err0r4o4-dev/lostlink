@@ -115,6 +115,66 @@
     -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(var(--glass-saturation));
   }
 
+  .menu-panel {
+    background:
+      radial-gradient(circle at 69% 0%, color-mix(in srgb, var(--color-info) 12%, transparent), transparent 24rem),
+      radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--color-menu-coral) 10%, transparent), transparent 22rem),
+      var(--glass-bg-strong);
+  }
+
+  .menu-destination-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  }
+
+  .menu-destination {
+    border-color: color-mix(in srgb, var(--color-border) 76%, white);
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+    box-shadow: var(--shadow-card);
+  }
+
+  .menu-destination:hover,
+  .menu-destination[aria-current="page"] {
+    border-color: color-mix(in srgb, var(--menu-accent) 24%, white);
+    background: color-mix(in srgb, var(--menu-accent-soft) 55%, var(--color-surface));
+    transform: translateY(-1px);
+  }
+
+  .menu-icon-tile {
+    color: var(--menu-accent);
+    background: var(--menu-accent-soft);
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--menu-accent) 16%, transparent);
+  }
+
+  .menu-accent-coral {
+    --menu-accent: var(--color-menu-coral);
+    --menu-accent-soft: var(--color-menu-coral-soft);
+  }
+
+  .menu-accent-green {
+    --menu-accent: var(--color-menu-green);
+    --menu-accent-soft: var(--color-menu-green-soft);
+  }
+
+  .menu-accent-amber {
+    --menu-accent: var(--color-menu-amber);
+    --menu-accent-soft: var(--color-menu-amber-soft);
+  }
+
+  .menu-accent-violet {
+    --menu-accent: var(--color-menu-violet);
+    --menu-accent-soft: var(--color-menu-violet-soft);
+  }
+
+  .menu-accent-blue {
+    --menu-accent: var(--color-menu-blue);
+    --menu-accent-soft: var(--color-menu-blue-soft);
+  }
+
+  .menu-accent-plum {
+    --menu-accent: var(--color-menu-plum);
+    --menu-accent-soft: var(--color-menu-plum-soft);
+  }
+
   .ui-transition {
     transition-duration: var(--motion-standard);
     transition-property: color, background-color, border-color, box-shadow, opacity, transform;

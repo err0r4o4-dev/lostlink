@@ -26,6 +26,19 @@
   --color-info: #3b82f6;
   --color-info-strong: #1d4ed8;
 
+  --color-menu-coral: #f0524f;
+  --color-menu-coral-soft: #fff0f0;
+  --color-menu-green: #0f9960;
+  --color-menu-green-soft: #e8fbf2;
+  --color-menu-amber: #c66a00;
+  --color-menu-amber-soft: #fff7db;
+  --color-menu-violet: #6d28d9;
+  --color-menu-violet-soft: #f2eaff;
+  --color-menu-blue: #2563eb;
+  --color-menu-blue-soft: #eaf3ff;
+  --color-menu-plum: #8b183f;
+  --color-menu-plum-soft: #f9e8f0;
+
   --font-sans:
     "Inter Variable", "Noto Sans Thai Variable", Inter, "Noto Sans Thai",
     ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

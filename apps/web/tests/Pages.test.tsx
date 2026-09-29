@@ -395,9 +395,21 @@ describe('frontend completion routes', () => {
 
     const menu = screen.getByRole('dialog', { name: 'Menu' })
     const destinations = within(menu).getByRole('navigation', { name: 'All destinations' })
+    expect(within(menu).getByText('Choose the destination you want to use')).toBeInTheDocument()
     expect(within(destinations).getAllByRole('link')).toHaveLength(7)
     for (const label of ['Report', 'Matches', 'Claims', 'Locations', 'Help', 'Staff preview', 'Profile']) {
       expect(within(destinations).getByRole('link', { name: label })).toBeInTheDocument()
+    }
+    for (const description of [
+      'Tell us what you lost or found',
+      'Review items that may match yours',
+      'Review and manage your claims',
+      'See reporting and coverage areas',
+      'Find answers and contact options',
+      'Preview tools for authorized staff',
+      'Personal details and settings',
+    ]) {
+      expect(within(destinations).getByText(description)).toBeInTheDocument()
     }
     for (const label of ['Explore', 'Search', 'AI Chat', 'Tracking']) {
       expect(within(destinations).queryByRole('link', { name: label })).not.toBeInTheDocument()

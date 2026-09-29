@@ -1,6 +1,7 @@
 import {
   Bell,
   ChevronDown,
+  ChevronRight,
   CircleHelp,
   Clock3,
   Compass,
@@ -32,6 +33,13 @@ interface NavigationItem {
   to: string
 }
 
+type MenuAccent = 'amber' | 'blue' | 'coral' | 'green' | 'plum' | 'violet'
+
+interface MenuNavigationItem extends NavigationItem {
+  accent: MenuAccent
+  description: string
+}
+
 const desktopNavigation: NavigationItem[] = [
   { to: '/discover', icon: Compass, label: 'Explore items' },
   { to: '/search', icon: Search, label: 'Search' },
@@ -52,11 +60,20 @@ const compactNavigation: NavigationItem[] = [
   desktopNavigation[6],
 ]
 
-const compactNavigationPaths = new Set(compactNavigation.map(({ to }) => to))
+function createMenuItem(to: string, accent: MenuAccent, description: string): MenuNavigationItem {
+  const navigationItem = desktopNavigation.find((item) => item.to === to)
+  if (!navigationItem) throw new Error(`Missing desktop navigation item for ${to}`)
+  return { ...navigationItem, accent, description }
+}
 
-const menuNavigation: NavigationItem[] = [
-  ...desktopNavigation.filter(({ to }) => !compactNavigationPaths.has(to)),
-  { to: '/profile', icon: UserRound, label: 'Profile' },
+const menuNavigation: MenuNavigationItem[] = [
+  createMenuItem('/report', 'coral', 'Tell us what you lost or found'),
+  createMenuItem('/matches', 'green', 'Review items that may match yours'),
+  createMenuItem('/claims', 'amber', 'Review and manage your claims'),
+  createMenuItem('/locations', 'violet', 'See reporting and coverage areas'),
+  createMenuItem('/help', 'amber', 'Find answers and contact options'),
+  createMenuItem('/staff', 'blue', 'Preview tools for authorized staff'),
+  { to: '/profile', icon: UserRound, label: 'Profile', accent: 'plum', description: 'Personal details and settings' },
 ]
 
 function NavigationLinks({ items = desktopNavigation }: { items?: NavigationItem[] }) {
@@ -217,61 +234,76 @@ export function MobileNavigation() {
     <Localize>
       {open && (
         <div key="mobile-menu-overlay" className="fixed inset-0 z-overlay lg:hidden">
-          <button type="button" tabIndex={-1} aria-label="Dismiss menu" onClick={() => closeMenu()} className="absolute inset-0 cursor-default bg-text-primary/20 backdrop-blur-[2px]" />
+          <button type="button" tabIndex={-1} aria-label="Dismiss menu" onClick={() => closeMenu()} className="absolute inset-0 cursor-default bg-text-primary/25 backdrop-blur-sm" />
           <GlassSurface
             ref={panelRef}
             id="mobile-navigation-menu"
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-menu-title"
-            className="safe-area-bottom absolute inset-x-3 bottom-[calc(var(--layout-mobile-nav)+env(safe-area-inset-bottom)+1rem)] max-h-[calc(100dvh-var(--layout-mobile-nav)-env(safe-area-inset-bottom)-2.5rem)] overflow-y-auto rounded-overlay bg-surface/95 p-4 shadow-floating md:left-1/2 md:right-auto md:w-[calc(100%-3rem)] md:max-w-2xl md:-translate-x-1/2 md:p-5"
+            aria-describedby="mobile-menu-description"
+            className="menu-panel safe-area-bottom absolute inset-x-3 bottom-[calc(var(--layout-mobile-nav)+env(safe-area-inset-bottom)+1rem)] top-[max(0.75rem,env(safe-area-inset-top))] flex flex-col overflow-hidden rounded-overlay shadow-floating sm:inset-x-4 md:inset-x-6 md:top-[max(1rem,env(safe-area-inset-top))]"
           >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-label font-bold uppercase tracking-label text-brand">All destinations</p>
-                <h2 id="mobile-menu-title" className="mt-1 text-card font-bold text-text-primary">Menu</h2>
+            <div className="relative flex items-start justify-between gap-4 px-5 pb-4 pt-5 md:px-8 md:pb-5 md:pt-7">
+              <div className="min-w-0">
+                <p className="text-caption font-bold text-brand">All destinations</p>
+                <h2 id="mobile-menu-title" className="mt-1 text-page-mobile font-bold tracking-tight text-text-primary md:text-page">Menu</h2>
+                <p id="mobile-menu-description" className="mt-1 text-caption font-medium text-text-secondary md:text-body">Choose the destination you want to use</p>
               </div>
               <button
                 ref={closeRef}
                 type="button"
                 aria-label="Close menu"
                 onClick={() => closeMenu()}
-                className="ui-transition flex size-11 shrink-0 items-center justify-center rounded-control text-text-secondary hover:bg-brand-soft hover:text-brand"
+                className="pressable ui-transition flex size-12 shrink-0 items-center justify-center rounded-pill border border-white/70 bg-surface/80 text-text-secondary shadow-card hover:bg-brand-soft hover:text-brand"
               >
-                <X aria-hidden="true" className="size-5" />
+                <X aria-hidden="true" className="size-6" strokeWidth={2} />
               </button>
             </div>
-            <nav aria-label="All destinations" className="mt-4 grid grid-cols-3 gap-2 md:gap-3">
-              {menuNavigation.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) => `pressable ui-transition flex min-h-20 flex-col items-center justify-center gap-2 rounded-card border px-2 py-3 text-center text-label font-semibold ${isActive ? 'border-brand/20 bg-brand-soft text-brand' : 'border-border bg-surface text-text-secondary hover:border-brand/20 hover:bg-brand-soft hover:text-brand'}`}
-                >
-                  <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </nav>
-            <button
-              type="button"
-              onClick={() => { setOpen(false); void signOut() }}
-              className="ui-transition mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-4 font-semibold text-error-strong hover:bg-error/10"
-            >
-              <LogOut aria-hidden="true" className="size-4" />Sign out
-            </button>
+            <div className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-3 md:px-8 md:pb-5">
+              <nav aria-label="All destinations" className="menu-destination-grid grid gap-3 md:gap-4">
+                {menuNavigation.map(({ to, icon: Icon, label, accent, description }) => {
+                  const itemId = to.slice(1).replaceAll('/', '-')
+                  return (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      aria-labelledby={`${itemId}-menu-label`}
+                      aria-describedby={`${itemId}-menu-description`}
+                      onClick={() => setOpen(false)}
+                      className={`menu-destination menu-accent-${accent} pressable ui-transition grid min-h-28 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-card border p-3 text-left md:min-h-32 md:gap-4 md:p-4`}
+                    >
+                      <span className="menu-icon-tile flex size-16 shrink-0 items-center justify-center rounded-feature md:size-20">
+                        <Icon aria-hidden="true" className="size-8 md:size-9" strokeWidth={2} />
+                      </span>
+                      <span className="min-w-0">
+                        <span id={`${itemId}-menu-label`} className="block text-card font-bold text-text-primary">{label}</span>
+                        <span id={`${itemId}-menu-description`} className="mt-1 block text-caption font-medium text-text-secondary">{description}</span>
+                      </span>
+                      <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-text-secondary" strokeWidth={2} />
+                    </NavLink>
+                  )
+                })}
+              </nav>
+              <button
+                type="button"
+                onClick={() => { setOpen(false); void signOut() }}
+                className="pressable ui-transition mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-card border border-brand/15 bg-brand-soft/75 px-4 text-card font-bold text-brand hover:border-brand/25 hover:bg-brand-soft"
+              >
+                <LogOut aria-hidden="true" className="size-5" />Sign out
+              </button>
+            </div>
           </GlassSurface>
         </div>
       )}
-      <GlassSurface key="mobile-primary-navigation" className={`safe-area-bottom fixed bottom-2 left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-feature shadow-floating lg:hidden md:max-w-2xl ${open ? 'z-dialog' : 'z-navigation'}`}>
-        <nav aria-label="Mobile primary" className="flex min-h-(--layout-mobile-nav) items-center px-2">
+      <GlassSurface key="mobile-primary-navigation" className={`safe-area-bottom fixed bottom-2 left-1/2 w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-overlay bg-surface/82 shadow-floating lg:hidden md:max-w-3xl ${open ? 'z-dialog' : 'z-navigation'}`}>
+        <nav aria-label="Mobile primary" className="flex min-h-(--layout-mobile-nav) items-center px-2 py-1">
           {compactNavigation.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               onClick={() => setOpen(false)}
-              className={({ isActive }) => `ui-transition flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 text-label font-semibold ${isActive ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
+              className={({ isActive }) => `ui-transition flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-feature px-1 text-label font-semibold ${isActive && !open ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
             >
               <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
               <span className="max-w-full truncate">{label}</span>
@@ -284,7 +316,7 @@ export function MobileNavigation() {
             aria-expanded={open}
             aria-controls="mobile-navigation-menu"
             onClick={() => setOpen((current) => !current)}
-            className={`ui-transition flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-control px-1 text-label font-semibold ${open ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
+            className={`ui-transition flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-feature px-1 text-label font-semibold ${open ? 'bg-brand-soft text-brand' : 'text-text-secondary hover:bg-brand-soft hover:text-brand'}`}
           >
             <LayoutGrid aria-hidden="true" className="size-5" strokeWidth={2} />
             <span>Menu</span>
