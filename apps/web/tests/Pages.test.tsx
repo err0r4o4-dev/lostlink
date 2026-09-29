@@ -381,7 +381,7 @@ describe('frontend completion routes', () => {
     ))
   })
 
-  it('opens the complete compact navigation and returns focus when dismissed', async () => {
+  it('keeps bottom-navigation destinations out of the compact menu and returns focus when dismissed', async () => {
     const user = userEvent.setup()
     renderWithQuery(<AuthContext.Provider value={authenticatedContext}><MemoryRouter initialEntries={['/discover']}><MobileNavigation /></MemoryRouter></AuthContext.Provider>)
 
@@ -395,9 +395,12 @@ describe('frontend completion routes', () => {
 
     const menu = screen.getByRole('dialog', { name: 'Menu' })
     const destinations = within(menu).getByRole('navigation', { name: 'All destinations' })
-    expect(within(destinations).getAllByRole('link')).toHaveLength(11)
-    for (const label of ['Explore', 'Search', 'AI Chat', 'Report', 'Matches', 'Claims', 'Tracking', 'Locations', 'Help', 'Staff preview', 'Profile']) {
+    expect(within(destinations).getAllByRole('link')).toHaveLength(7)
+    for (const label of ['Report', 'Matches', 'Claims', 'Locations', 'Help', 'Staff preview', 'Profile']) {
       expect(within(destinations).getByRole('link', { name: label })).toBeInTheDocument()
+    }
+    for (const label of ['Explore', 'Search', 'AI Chat', 'Tracking']) {
+      expect(within(destinations).queryByRole('link', { name: label })).not.toBeInTheDocument()
     }
     expect(screen.getByRole('button', { name: 'Close menu' })).toHaveFocus()
     expect(document.body.style.overflow).toBe('hidden')

@@ -52,9 +52,10 @@ const compactNavigation: NavigationItem[] = [
   desktopNavigation[6],
 ]
 
+const compactNavigationPaths = new Set(compactNavigation.map(({ to }) => to))
+
 const menuNavigation: NavigationItem[] = [
-  { ...desktopNavigation[0], label: 'Explore' },
-  ...desktopNavigation.slice(1),
+  ...desktopNavigation.filter(({ to }) => !compactNavigationPaths.has(to)),
   { to: '/profile', icon: UserRound, label: 'Profile' },
 ]
 
@@ -336,7 +337,7 @@ export function AppShell() {
           <GlassSurface className="safe-area-top sticky top-0 z-navigation h-(--layout-topbar) rounded-none border-x-0 border-t-0 shadow-card">
             <header className="mx-auto flex h-full max-w-content items-center justify-between px-5 md:px-7 lg:px-8 xl:px-10">
               <div className="lg:hidden"><BrandMark compact /></div>
-              <p className="hidden text-caption font-medium text-text-secondary lg:block">University lost &amp; found</p>
+              <p className="hidden text-caption font-medium text-text-secondary lg:block">Srinakharinwirot University lost &amp; found</p>
               <div className="flex items-center gap-1">
                 <LanguageToggle />
                 <div className="hidden md:block"><HeaderAction to="/notifications" icon={Bell} label="Notifications" /></div>

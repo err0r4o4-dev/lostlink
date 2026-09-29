@@ -48,7 +48,7 @@ export function PublicLayout() {
           <div>
             <PublicBrand />
             <p className="mt-3 max-w-xl text-caption text-text-secondary">
-              A university Lost &amp; Found platform connecting people who lost items with people who found them.
+              A Srinakharinwirot University Lost &amp; Found platform connecting people who lost items with people who found them.
             </p>
           </div>
           <div className="md:text-right">

@@ -213,7 +213,11 @@ test('uses compact navigation on mobile and tablet while keeping desktop account
     await menuTrigger.click()
     const menu = page.getByRole('dialog', { name: 'Menu' })
     await expect(menu).toBeVisible()
-    await expect(menu.getByRole('navigation', { name: 'All destinations' }).getByRole('link')).toHaveCount(11)
+    const menuDestinations = menu.getByRole('navigation', { name: 'All destinations' })
+    await expect(menuDestinations.getByRole('link')).toHaveCount(7)
+    for (const label of ['Explore', 'Search', 'AI Chat', 'Tracking']) {
+      await expect(menuDestinations.getByRole('link', { name: label })).toHaveCount(0)
+    }
     await expect(menu.getByRole('button', { name: 'Sign out' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(menu).toHaveCount(0)
