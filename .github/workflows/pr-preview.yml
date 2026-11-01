@@ -91,7 +91,7 @@ jobs:
           fi
 
       - name: Deploy pull request preview
-        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        uses: rossjrw/pr-preview-action@873417d2df72380da1f3978378fb58560bcde976 # v1.8.2
         with:
           source-dir: preview-dist
           preview-branch: gh-pages
@@ -121,7 +121,7 @@ jobs:
           persist-credentials: false
 
       - name: Remove pull request preview
-        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        uses: rossjrw/pr-preview-action@873417d2df72380da1f3978378fb58560bcde976 # v1.8.2
         with:
           preview-branch: gh-pages
           umbrella-dir: pr-preview
